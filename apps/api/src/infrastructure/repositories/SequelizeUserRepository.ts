@@ -1,0 +1,37 @@
+import { UserModel } from '../database/models/UserModel.js';
+import type { User } from '../../domain/entities/User.js';
+import type { CreateUserInput, UserRepository } from '../../domain/repositories/UserRepository.js';
+
+function toEntity(model: UserModel): User {
+  return {
+    id: model.id,
+    name: model.name,
+    email: model.email,
+    passwordHash: model.passwordHash,
+    role: model.role,
+    createdAt: model.createdAt,
+    updatedAt: model.updatedAt,
+  };
+}
+
+export class SequelizeUserRepository implements UserRepository {
+  async findById(id: string): Promise<User | null> {
+    const found = await UserModel.findByPk(id);
+    return found ? toEntity(found) : null;
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    const found = await UserModel.findOne({ where: { email } });
+    return found ? toEntity(found) : null;
+  }
+
+  async create(input: CreateUserInput): Promise<User> {
+    const created = await UserModel.create({
+      name: input.name,
+      email: input.email,
+      passwordHash: input.passwordHash,
+      role: input.role,
+    });
+    return toEntity(created);
+  }
+}
