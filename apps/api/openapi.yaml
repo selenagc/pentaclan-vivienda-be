@@ -307,7 +307,7 @@ components:
             details: {}
     Role:
       type: string
-      enum: [admin, user]
+      enum: [admin, social_lead, technical_lead, project_supervisor]
     ProjectStatus:
       type: string
       enum: [active, paused, completed, cancelled]
