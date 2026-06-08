@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Pentaclan Vivienda API",
-    "description": "Colección de la API de Pentaclan Vivienda.\n\nIncluye el flujo de autenticación (PV-10: roles admin / social_lead / technical_lead / project_supervisor) y el CRUD de proyectos.\n\nUso rápido:\n1. Selecciona el environment 'Pentaclan Vivienda - Local'.\n2. Ejecuta Auth > Login (guarda accessToken, refreshToken y currentRole automáticamente).\n3. El resto de requests usan {{accessToken}} vía Bearer heredado.",
+    "description": "Colección de la API de Pentaclan Vivienda.\n\nIncluye el flujo de autenticación (PV-10: roles admin / social_lead / technical_lead / project_supervisor) y el CRUD de proyectos.\n\nUso rápido:\n1. Selecciona el environment 'Pentaclan Vivienda - Local'.\n2. Ejecuta Auth > Login (guarda accessToken y currentRole automáticamente).\n3. El resto de requests usan {{accessToken}} vía Bearer heredado.\n\nNota: el login devuelve { data: { user, accessToken } } (sin envelope success ni refreshToken).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "pv-collection-0001-0001-0001-000000000001"
   },
@@ -65,15 +65,10 @@
                   "const VALID_ROLES = ['admin', 'social_lead', 'technical_lead', 'project_supervisor'];",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "pm.test('envelope success', () => pm.expect(res.success).to.be.true);",
                   "const data = res.data;",
-                  "pm.test('tokens present', () => {",
-                  "  pm.expect(data.accessToken, 'accessToken').to.be.a('string');",
-                  "  pm.expect(data.refreshToken, 'refreshToken').to.be.a('string');",
-                  "});",
+                  "pm.test('accessToken present', () => pm.expect(data.accessToken).to.be.a('string'));",
                   "pm.test('PV-10: role is valid', () => pm.expect(VALID_ROLES).to.include(data.user.role));",
                   "pm.environment.set('accessToken', data.accessToken);",
-                  "pm.environment.set('refreshToken', data.refreshToken);",
                   "pm.environment.set('currentRole', data.user.role);",
                   "pm.environment.set('userId', data.user.id);",
                   "console.log('Logged in as', data.user.email, '-> role:', data.user.role);"
@@ -101,63 +96,6 @@
                   "pm.test('no passwordHash leaked', () => pm.expect(res.data).to.not.have.property('passwordHash'));",
                   "pm.test('PV-10: role is valid', () => pm.expect(VALID_ROLES).to.include(res.data.role));",
                   "pm.test('role matches the one from login', () => pm.expect(res.data.role).to.eql(pm.environment.get('currentRole')));"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "POST /auth/refresh",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "const res = pm.response.json();",
-                  "const data = res.data;",
-                  "pm.test('new tokens present', () => {",
-                  "  pm.expect(data.accessToken, 'accessToken').to.be.a('string');",
-                  "  pm.expect(data.refreshToken, 'refreshToken').to.be.a('string');",
-                  "});",
-                  "pm.environment.set('accessToken', data.accessToken);",
-                  "pm.environment.set('refreshToken', data.refreshToken);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "POST /auth/logout",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "const res = pm.response.json();",
-                  "pm.test('envelope success', () => pm.expect(res.success).to.be.true);"
                 ]
               }
             }
