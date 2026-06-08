@@ -22,28 +22,7 @@ const updateUseCase = new UpdateUserUseCase(repo, passwordService);
 const deleteUseCase = new DeleteUserUseCase(repo);
 const updateMeUseCase = new UpdateMeUseCase(repo, passwordService);
 
-export const createUser: RequestHandler = asyncHandler(async (req, res) => {
-  const user = await createUseCase.execute(req.body);
-  created(res, user, 'User created');
-});
-
-export const getUser: RequestHandler = asyncHandler(async (req, res) => {
-  const user = await getUseCase.execute(req.params.id);
-  ok(res, user);
-});
-
-export const updateUser: RequestHandler = asyncHandler(async (req, res) => {
-  const user = await updateUseCase.execute(req.params.id, req.body);
-  ok(res, user, 'User updated');
-});
-
-export const deleteUser: RequestHandler = asyncHandler(async (req, res) => {
-  if (!req.user) throw new UnauthorizedError();
-  await deleteUseCase.execute({ id: req.params.id, requesterId: req.user.id });
-  noContent(res);
-});
-
-export const listUsers: RequestHandler = asyncHandler(async (req, res) => {
+export const index: RequestHandler = asyncHandler(async (req, res) => {
   const q = req.query as Record<string, string | undefined>;
   const page = Number(q.page) || 1;
   const limit = Number(q.limit) || 20;
@@ -62,6 +41,28 @@ export const listUsers: RequestHandler = asyncHandler(async (req, res) => {
   paginated(res, result.data, buildPaginationMeta(page, limit, result.total));
 });
 
+export const store: RequestHandler = asyncHandler(async (req, res) => {
+  const user = await createUseCase.execute(req.body);
+  created(res, user, 'User created');
+});
+
+export const show: RequestHandler = asyncHandler(async (req, res) => {
+  const user = await getUseCase.execute(req.params.id);
+  ok(res, user);
+});
+
+export const update: RequestHandler = asyncHandler(async (req, res) => {
+  const user = await updateUseCase.execute(req.params.id, req.body);
+  ok(res, user, 'User updated');
+});
+
+export const destroy: RequestHandler = asyncHandler(async (req, res) => {
+  if (!req.user) throw new UnauthorizedError();
+  await deleteUseCase.execute({ id: req.params.id, requesterId: req.user.id });
+  noContent(res);
+});
+
+// Accion custom de auto-servicio (no es parte del CRUD de recurso).
 export const updateMe: RequestHandler = asyncHandler(async (req, res) => {
   if (!req.user) throw new UnauthorizedError();
   const user = await updateMeUseCase.execute({

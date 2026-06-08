@@ -2,14 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middlewares/authenticate.js';
 import { authorize } from '../middlewares/authorize.js';
 import { validate } from '../middlewares/validate.js';
-import {
-  createUser,
-  deleteUser,
-  getUser,
-  listUsers,
-  updateMe,
-  updateUser,
-} from '../controllers/UsersController.js';
+import * as users from '../controllers/UsersController.js';
 import {
   createUserSchema,
   listUsersQuerySchema,
@@ -23,21 +16,11 @@ export const usersRouter = Router();
 usersRouter.use(authenticate);
 
 // Auto-servicio (cualquier usuario autenticado). Debe ir ANTES de '/:id'.
-usersRouter.patch('/me', validate({ body: updateMeSchema }), updateMe);
+usersRouter.patch('/me', validate({ body: updateMeSchema }), users.updateMe);
 
-// Admin-only.
-usersRouter.post('/', authorize('admin'), validate({ body: createUserSchema }), createUser);
-usersRouter.get('/', authorize('admin'), validate({ query: listUsersQuerySchema }), listUsers);
-usersRouter.get('/:id', authorize('admin'), validate({ params: userIdParamsSchema }), getUser);
-usersRouter.put(
-  '/:id',
-  authorize('admin'),
-  validate({ params: userIdParamsSchema, body: updateUserSchema }),
-  updateUser,
-);
-usersRouter.delete(
-  '/:id',
-  authorize('admin'),
-  validate({ params: userIdParamsSchema }),
-  deleteUser,
-);
+// Admin-only (CRUD de recurso).
+usersRouter.post('/', authorize('admin'), validate({ body: createUserSchema }), users.store);
+usersRouter.get('/', authorize('admin'), validate({ query: listUsersQuerySchema }), users.index);
+usersRouter.get('/:id', authorize('admin'), validate({ params: userIdParamsSchema }), users.show);
+usersRouter.put('/:id', authorize('admin'), validate({ params: userIdParamsSchema, body: updateUserSchema }), users.update,);
+usersRouter.delete( '/:id', authorize('admin'), validate({ params: userIdParamsSchema }), users.destroy);
