@@ -46,7 +46,7 @@ const schema = Joi.object<AppEnv>({
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
   ADMIN_NAME: Joi.string().required(),
-  ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).required(),
+  ADMIN_EMAIL: Joi.string().email().required(),
   ADMIN_PASSWORD: Joi.string().min(8).required(),
 
   AWS_REGION: Joi.string().allow('').default(''),
