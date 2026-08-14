@@ -504,6 +504,154 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Entidades publicas",
+      "item": [
+        {
+          "name": "GET /entidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/entidades", "host": ["{{baseUrl}}"], "path": ["entidades"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));",
+                  "pm.test('todas usan el NIT institucional 192310023', () => pm.expect(res.data.every((e) => e.nit === 192310023)).to.be.true);",
+                  "pm.test('el NIT se repite pero el id no', () => pm.expect(new Set(res.data.map((e) => e.id)).size).to.eql(res.data.length));",
+                  "if (res.data.length > 0) { pm.environment.set('entidadId', res.data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /entidades/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades/{{entidadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["entidades", "{{entidadId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('devuelve la entidad pedida', () => pm.expect(res.data.id).to.eql(Number(pm.environment.get('entidadId'))));",
+                  "pm.test('sigla AEVIVIENDA', () => pm.expect(res.data.sigla).to.eql('AEVIVIENDA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /departamentos/:id/entidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departamentos/{{departamentoId}}/entidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["departamentos", "{{departamentoId}}", "entidades"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const esperado = Number(pm.environment.get('departamentoId'));",
+                  "pm.test('solo entidades del departamento pedido', () => pm.expect(res.data.every((e) => e.departamentoId === esperado)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /entidades/:id (404 inexistente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/entidades/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["entidades", "999999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('envelope de error', () => pm.expect(pm.response.json().success).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /departamentos/:id/entidades (404 padre inexistente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departamentos/999999/entidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["departamentos", "999999", "entidades"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /entidades (404: catalogo de solo lectura)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"nit\": 192310023,\n  \"nombre\": \"Nueva\",\n  \"sigla\": \"NUEVA\",\n  \"departamentoId\": 1\n}" },
+            "url": { "raw": "{{baseUrl}}/entidades", "host": ["{{baseUrl}}"], "path": ["entidades"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no hay endpoint de escritura', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

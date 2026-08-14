@@ -126,6 +126,8 @@ Pragmatic Clean Architecture under `apps/api/src`:
 |-----------|----------------------------------------------|
 | Auth      | Implemented (login/refresh/logout/me)        |
 | Projects  | Implemented (CRUD with pagination/filters)   |
+| Geografia | Implemented (read-only catalog, seeded)      |
+| Entidades | Implemented (read-only catalog, seeded)      |
 | Clients   | Placeholder (returns 501)                    |
 | Files     | Placeholder, S3 adapter scaffolded           |
 | Reports   | Placeholder (returns 501)                    |
