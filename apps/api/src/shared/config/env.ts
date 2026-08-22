@@ -16,9 +16,7 @@ export interface AppEnv {
   DB_PASSWORD: string;
 
   JWT_ACCESS_SECRET: string;
-  JWT_REFRESH_SECRET: string;
   JWT_ACCESS_EXPIRES_IN: string;
-  JWT_REFRESH_EXPIRES_IN: string;
 
   ADMIN_NAME: string;
   ADMIN_EMAIL: string;
@@ -41,9 +39,7 @@ const schema = Joi.object<AppEnv>({
   DB_PASSWORD: Joi.string().allow('').required(),
 
   JWT_ACCESS_SECRET: Joi.string().min(16).required(),
-  JWT_REFRESH_SECRET: Joi.string().min(16).required(),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
   ADMIN_NAME: Joi.string().required(),
   ADMIN_EMAIL: Joi.string().email().required(),

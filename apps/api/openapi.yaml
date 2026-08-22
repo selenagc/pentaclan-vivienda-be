@@ -53,71 +53,15 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
                     properties:
-                      data:
-                        type: object
-                        properties:
-                          accessToken: { type: string }
-                          refreshToken: { type: string }
-                          user: { $ref: '#/components/schemas/User' }
+                      user: { $ref: '#/components/schemas/User' }
+                      accessToken: { type: string }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /auth/refresh:
-    post:
-      tags: [Auth]
-      summary: Issue a new access token from a refresh token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refreshToken]
-              properties:
-                refreshToken: { type: string }
-      responses:
-        '200':
-          description: Token refreshed
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          accessToken: { type: string }
-                          refreshToken: { type: string }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /auth/logout:
-    post:
-      tags: [Auth]
-      summary: Revoke the current refresh token (close current session)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refreshToken]
-              properties:
-                refreshToken: { type: string }
-      responses:
-        '200':
-          description: Session closed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /auth/me:
@@ -307,7 +251,7 @@ components:
             details: {}
     Role:
       type: string
-      enum: [admin, user]
+      enum: [admin, social_lead, technical_lead, project_supervisor]
     ProjectStatus:
       type: string
       enum: [active, paused, completed, cancelled]
