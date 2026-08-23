@@ -13,6 +13,8 @@ tags:
   - name: Projects
   - name: Geografia
     description: Catalogo geografico de Bolivia (datos maestros, solo lectura).
+  - name: Entidades publicas
+    description: Catalogo de entidades publicas por departamento (datos maestros, solo lectura).
 
 paths:
   /health:
@@ -444,6 +446,54 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /entidades:
+    get:
+      tags: [Entidades publicas]
+      summary: Listar las entidades publicas del catalogo
+      description: >-
+        Catalogo de solo lectura cargado por seeder (PV-19). No existen
+        operaciones POST/PUT/PATCH/DELETE.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de entidades ordenada por sigla
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/EntidadPublica' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /entidades/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Entidades publicas]
+      summary: Obtener una entidad publica por su ID
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Entidad publica encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/EntidadPublica' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
 components:
   securitySchemes:
     BearerAuth:
@@ -511,6 +561,15 @@ components:
         id: { type: integer, example: 100 }
         nombre: { type: string, example: El Alto }
         provinciaId: { type: integer, example: 10 }
+    EntidadPublica:
+      type: object
+      required: [id, nit, nombre, sigla]
+      properties:
+        id: { type: integer, example: 1 }
+        # Clave natural: cada entidad tiene un unico NIT institucional.
+        nit: { type: integer, format: int64, example: 192310023 }
+        nombre: { type: string, example: Agencia Estatal de Vivienda }
+        sigla: { type: string, example: AEVIVIENDA }
     User:
       type: object
       properties:
