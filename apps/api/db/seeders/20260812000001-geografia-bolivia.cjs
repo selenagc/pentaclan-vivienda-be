@@ -13,158 +13,613 @@ const CATALOGO = [
   {
     nombre: 'Chuquisaca',
     provincias: [
-      { nombre: 'Oropeza', municipios: ['Sucre', 'Yotala', 'Poroma'] },
-      { nombre: 'Azurduy', municipios: ['Azurduy', 'Tarvita'] },
-      { nombre: 'Zudáñez', municipios: ['Villa Zudáñez', 'Presto', 'Villa Mojocoya', 'Icla'] },
-      { nombre: 'Tomina', municipios: ['Padilla', 'Tomina', 'Sopachuy', 'Villa Alcalá', 'El Villar'] },
-      { nombre: 'Hernando Siles', municipios: ['Monteagudo', 'Huacareta'] },
-      { nombre: 'Yamparáez', municipios: ['Tarabuco', 'Yamparáez'] },
-      { nombre: 'Nor Cinti', municipios: ['Camargo', 'San Lucas', 'Incahuasi', 'Villa Charcas'] },
-      { nombre: 'Belisario Boeto', municipios: ['Villa Serrano'] },
-      { nombre: 'Sud Cinti', municipios: ['Villa Abecia', 'Culpina', 'Las Carreras'] },
-      { nombre: 'Luis Calvo', municipios: ['Villa Vaca Guzmán (Muyupampa)', 'Huacaya', 'Macharetí'] },
+      {
+        nombre: 'Oropeza',
+        municipios: [{ nombre: 'Sucre' }, { nombre: 'Yotala' }, { nombre: 'Poroma' }],
+      },
+      { nombre: 'Azurduy', municipios: [{ nombre: 'Azurduy' }, { nombre: 'Tarvita' }] },
+      {
+        nombre: 'Zudáñez',
+        municipios: [
+          { nombre: 'Villa Zudáñez' },
+          { nombre: 'Presto' },
+          { nombre: 'Villa Mojocoya' },
+          { nombre: 'Icla' },
+        ],
+      },
+      {
+        nombre: 'Tomina',
+        municipios: [
+          { nombre: 'Padilla' },
+          { nombre: 'Tomina' },
+          { nombre: 'Sopachuy' },
+          { nombre: 'Villa Alcalá' },
+          { nombre: 'El Villar' },
+        ],
+      },
+      { nombre: 'Hernando Siles', municipios: [{ nombre: 'Monteagudo' }, { nombre: 'Huacareta' }] },
+      { nombre: 'Yamparáez', municipios: [{ nombre: 'Tarabuco' }, { nombre: 'Yamparáez' }] },
+      {
+        nombre: 'Nor Cinti',
+        municipios: [
+          { nombre: 'Camargo' },
+          { nombre: 'San Lucas' },
+          { nombre: 'Incahuasi' },
+          { nombre: 'Villa Charcas' },
+        ],
+      },
+      { nombre: 'Belisario Boeto', municipios: [{ nombre: 'Villa Serrano' }] },
+      {
+        nombre: 'Sud Cinti',
+        municipios: [{ nombre: 'Villa Abecia' }, { nombre: 'Culpina' }, { nombre: 'Las Carreras' }],
+      },
+      {
+        nombre: 'Luis Calvo',
+        municipios: [
+          { nombre: 'Villa Vaca Guzmán (Muyupampa)' },
+          { nombre: 'Huacaya' },
+          { nombre: 'Macharetí' },
+        ],
+      },
     ],
   },
   {
     nombre: 'La Paz',
     provincias: [
-      { nombre: 'Murillo', municipios: ['La Paz', 'Palca', 'Mecapaca', 'Achocalla', 'El Alto'] },
-      { nombre: 'Omasuyos', municipios: ['Achacachi', 'Ancoraimes', 'Chua Cocani', 'Huarina', 'Santiago de Huata', 'Huatajata'] },
-      { nombre: 'Pacajes', municipios: ['Coro Coro', 'Caquiaviri', 'Calacoto', 'Comanche', 'Charaña', 'Waldo Ballivián', 'Nazacara de Pacajes', 'Callapa'] },
-      { nombre: 'Camacho', municipios: ['Puerto Acosta', 'Mocomoco', 'Puerto Carabuco', 'Humanata', 'Escoma'] },
-      { nombre: 'Muñecas', municipios: ['Chuma', 'Ayata', 'Aucapata'] },
-      { nombre: 'Larecaja', municipios: ['Sorata', 'Guanay', 'Tacacoma', 'Quiabaya', 'Combaya', 'Tipuani', 'Mapiri', 'Teoponte'] },
-      { nombre: 'Franz Tamayo', municipios: ['Apolo', 'Pelechuco'] },
-      { nombre: 'Ingavi', municipios: ['Viacha', 'Guaqui', 'Tiahuanaco', 'Desaguadero', 'San Andrés de Machaca', 'Jesús de Machaca', 'Taraco'] },
-      { nombre: 'Loayza', municipios: ['Luribay', 'Sapahaqui', 'Yaco', 'Malla', 'Cairoma'] },
-      { nombre: 'Inquisivi', municipios: ['Inquisivi', 'Quime', 'Cajuata', 'Colquiri', 'Ichoca', 'Licoma Pampa'] },
-      { nombre: 'Sud Yungas', municipios: ['Chulumani', 'Irupana', 'Yanacachi', 'Palos Blancos', 'La Asunta'] },
-      { nombre: 'Los Andes', municipios: ['Pucarani', 'Laja', 'Batallas', 'Puerto Pérez'] },
-      { nombre: 'Aroma', municipios: ['Sica Sica', 'Umala', 'Ayo Ayo', 'Calamarca', 'Patacamaya', 'Colquencha', 'Collana'] },
-      { nombre: 'Nor Yungas', municipios: ['Coroico', 'Coripata'] },
-      { nombre: 'Iturralde', municipios: ['Ixiamas', 'San Buenaventura'] },
-      { nombre: 'Bautista Saavedra', municipios: ['Charazani', 'Curva'] },
-      { nombre: 'Manco Kapac', municipios: ['Copacabana', 'San Pedro de Tiquina', 'Tito Yupanqui'] },
-      { nombre: 'Gualberto Villarroel', municipios: ['San Pedro de Curahuara', 'Papel Pampa', 'Chacarilla'] },
-      { nombre: 'General José Manuel Pando', municipios: ['Santiago de Machaca', 'Catacora'] },
-      { nombre: 'Caranavi', municipios: ['Caranavi', 'Alto Beni'] },
+      {
+        nombre: 'Murillo',
+        municipios: [
+          { nombre: 'La Paz' },
+          { nombre: 'Palca' },
+          { nombre: 'Mecapaca' },
+          { nombre: 'Achocalla' },
+          { nombre: 'El Alto' },
+        ],
+      },
+      {
+        nombre: 'Omasuyos',
+        municipios: [
+          { nombre: 'Achacachi' },
+          { nombre: 'Ancoraimes' },
+          { nombre: 'Chua Cocani' },
+          { nombre: 'Huarina' },
+          { nombre: 'Santiago de Huata' },
+          { nombre: 'Huatajata' },
+        ],
+      },
+      {
+        nombre: 'Pacajes',
+        municipios: [
+          { nombre: 'Coro Coro' },
+          { nombre: 'Caquiaviri' },
+          { nombre: 'Calacoto' },
+          { nombre: 'Comanche' },
+          { nombre: 'Charaña' },
+          { nombre: 'Waldo Ballivián' },
+          { nombre: 'Nazacara de Pacajes' },
+          { nombre: 'Callapa' },
+        ],
+      },
+      {
+        nombre: 'Camacho',
+        municipios: [
+          { nombre: 'Puerto Acosta' },
+          { nombre: 'Mocomoco' },
+          { nombre: 'Puerto Carabuco' },
+          { nombre: 'Humanata' },
+          { nombre: 'Escoma' },
+        ],
+      },
+      {
+        nombre: 'Muñecas',
+        municipios: [{ nombre: 'Chuma' }, { nombre: 'Ayata' }, { nombre: 'Aucapata' }],
+      },
+      {
+        nombre: 'Larecaja',
+        municipios: [
+          { nombre: 'Sorata' },
+          { nombre: 'Guanay' },
+          { nombre: 'Tacacoma' },
+          { nombre: 'Quiabaya' },
+          { nombre: 'Combaya' },
+          { nombre: 'Tipuani' },
+          { nombre: 'Mapiri' },
+          { nombre: 'Teoponte' },
+        ],
+      },
+      { nombre: 'Franz Tamayo', municipios: [{ nombre: 'Apolo' }, { nombre: 'Pelechuco' }] },
+      {
+        nombre: 'Ingavi',
+        municipios: [
+          { nombre: 'Viacha' },
+          { nombre: 'Guaqui' },
+          { nombre: 'Tiahuanaco' },
+          { nombre: 'Desaguadero' },
+          { nombre: 'San Andrés de Machaca' },
+          { nombre: 'Jesús de Machaca' },
+          { nombre: 'Taraco' },
+        ],
+      },
+      {
+        nombre: 'Loayza',
+        municipios: [
+          { nombre: 'Luribay' },
+          { nombre: 'Sapahaqui' },
+          { nombre: 'Yaco' },
+          { nombre: 'Malla' },
+          { nombre: 'Cairoma' },
+        ],
+      },
+      {
+        nombre: 'Inquisivi',
+        municipios: [
+          { nombre: 'Inquisivi' },
+          { nombre: 'Quime' },
+          { nombre: 'Cajuata' },
+          { nombre: 'Colquiri' },
+          { nombre: 'Ichoca' },
+          { nombre: 'Licoma Pampa' },
+        ],
+      },
+      {
+        nombre: 'Sud Yungas',
+        municipios: [
+          { nombre: 'Chulumani' },
+          { nombre: 'Irupana' },
+          { nombre: 'Yanacachi' },
+          { nombre: 'Palos Blancos' },
+          { nombre: 'La Asunta' },
+        ],
+      },
+      {
+        nombre: 'Los Andes',
+        municipios: [
+          { nombre: 'Pucarani' },
+          { nombre: 'Laja' },
+          { nombre: 'Batallas' },
+          { nombre: 'Puerto Pérez' },
+        ],
+      },
+      {
+        nombre: 'Aroma',
+        municipios: [
+          { nombre: 'Sica Sica' },
+          { nombre: 'Umala' },
+          { nombre: 'Ayo Ayo' },
+          { nombre: 'Calamarca' },
+          { nombre: 'Patacamaya' },
+          { nombre: 'Colquencha' },
+          { nombre: 'Collana' },
+        ],
+      },
+      { nombre: 'Nor Yungas', municipios: [{ nombre: 'Coroico' }, { nombre: 'Coripata' }] },
+      { nombre: 'Iturralde', municipios: [{ nombre: 'Ixiamas' }, { nombre: 'San Buenaventura' }] },
+      { nombre: 'Bautista Saavedra', municipios: [{ nombre: 'Charazani' }, { nombre: 'Curva' }] },
+      {
+        nombre: 'Manco Kapac',
+        municipios: [
+          { nombre: 'Copacabana' },
+          { nombre: 'San Pedro de Tiquina' },
+          { nombre: 'Tito Yupanqui' },
+        ],
+      },
+      {
+        nombre: 'Gualberto Villarroel',
+        municipios: [
+          { nombre: 'San Pedro de Curahuara' },
+          { nombre: 'Papel Pampa' },
+          { nombre: 'Chacarilla' },
+        ],
+      },
+      {
+        nombre: 'General José Manuel Pando',
+        municipios: [{ nombre: 'Santiago de Machaca' }, { nombre: 'Catacora' }],
+      },
+      { nombre: 'Caranavi', municipios: [{ nombre: 'Caranavi' }, { nombre: 'Alto Beni' }] },
     ],
   },
   {
     nombre: 'Cochabamba',
     provincias: [
-      { nombre: 'Cercado', municipios: ['Cochabamba'] },
-      { nombre: 'Campero', municipios: ['Aiquile', 'Pasorapa', 'Omereque'] },
-      { nombre: 'Ayopaya', municipios: ['Independencia', 'Morochata', 'Cocapata'] },
-      { nombre: 'Esteban Arze', municipios: ['Tarata', 'Anzaldo', 'Arbieto', 'Sacabamba'] },
-      { nombre: 'Arani', municipios: ['Arani', 'Vacas'] },
-      { nombre: 'Arque', municipios: ['Arque', 'Tacopaya'] },
-      { nombre: 'Capinota', municipios: ['Capinota', 'Santiváñez', 'Sicaya'] },
-      { nombre: 'Germán Jordán', municipios: ['Cliza', 'Toco', 'Tolata'] },
-      { nombre: 'Quillacollo', municipios: ['Quillacollo', 'Sipe Sipe', 'Tiquipaya', 'Vinto', 'Colcapirhua'] },
-      { nombre: 'Chapare', municipios: ['Sacaba', 'Colomi', 'Villa Tunari'] },
-      { nombre: 'Tapacarí', municipios: ['Tapacarí'] },
-      { nombre: 'Carrasco', municipios: ['Totora', 'Pojo', 'Pocona', 'Chimoré', 'Puerto Villarroel', 'Entre Ríos'] },
-      { nombre: 'Mizque', municipios: ['Mizque', 'Vila Vila', 'Alalay'] },
-      { nombre: 'Punata', municipios: ['Punata', 'Villa Rivero', 'San Benito', 'Tacachi', 'Cuchumuela'] },
-      { nombre: 'Bolívar', municipios: ['Bolívar'] },
-      { nombre: 'Tiraque', municipios: ['Tiraque', 'Shinahota'] },
+      { nombre: 'Cercado', municipios: [{ nombre: 'Cochabamba' }] },
+      {
+        nombre: 'Campero',
+        municipios: [{ nombre: 'Aiquile' }, { nombre: 'Pasorapa' }, { nombre: 'Omereque' }],
+      },
+      {
+        nombre: 'Ayopaya',
+        municipios: [{ nombre: 'Independencia' }, { nombre: 'Morochata' }, { nombre: 'Cocapata' }],
+      },
+      {
+        nombre: 'Esteban Arze',
+        municipios: [
+          { nombre: 'Tarata' },
+          { nombre: 'Anzaldo' },
+          { nombre: 'Arbieto' },
+          { nombre: 'Sacabamba' },
+        ],
+      },
+      { nombre: 'Arani', municipios: [{ nombre: 'Arani' }, { nombre: 'Vacas' }] },
+      { nombre: 'Arque', municipios: [{ nombre: 'Arque' }, { nombre: 'Tacopaya' }] },
+      {
+        nombre: 'Capinota',
+        municipios: [{ nombre: 'Capinota' }, { nombre: 'Santiváñez' }, { nombre: 'Sicaya' }],
+      },
+      {
+        nombre: 'Germán Jordán',
+        municipios: [{ nombre: 'Cliza' }, { nombre: 'Toco' }, { nombre: 'Tolata' }],
+      },
+      {
+        nombre: 'Quillacollo',
+        municipios: [
+          { nombre: 'Quillacollo' },
+          { nombre: 'Sipe Sipe' },
+          { nombre: 'Tiquipaya' },
+          { nombre: 'Vinto' },
+          { nombre: 'Colcapirhua' },
+        ],
+      },
+      {
+        nombre: 'Chapare',
+        municipios: [{ nombre: 'Sacaba' }, { nombre: 'Colomi' }, { nombre: 'Villa Tunari' }],
+      },
+      { nombre: 'Tapacarí', municipios: [{ nombre: 'Tapacarí' }] },
+      {
+        nombre: 'Carrasco',
+        municipios: [
+          { nombre: 'Totora' },
+          { nombre: 'Pojo' },
+          { nombre: 'Pocona' },
+          { nombre: 'Chimoré' },
+          { nombre: 'Puerto Villarroel' },
+          { nombre: 'Entre Ríos' },
+        ],
+      },
+      {
+        nombre: 'Mizque',
+        municipios: [{ nombre: 'Mizque' }, { nombre: 'Vila Vila' }, { nombre: 'Alalay' }],
+      },
+      {
+        nombre: 'Punata',
+        municipios: [
+          { nombre: 'Punata' },
+          { nombre: 'Villa Rivero' },
+          { nombre: 'San Benito' },
+          { nombre: 'Tacachi' },
+          { nombre: 'Cuchumuela' },
+        ],
+      },
+      { nombre: 'Bolívar', municipios: [{ nombre: 'Bolívar' }] },
+      { nombre: 'Tiraque', municipios: [{ nombre: 'Tiraque' }, { nombre: 'Shinahota' }] },
     ],
   },
   {
     nombre: 'Oruro',
     provincias: [
-      { nombre: 'Cercado', municipios: ['Oruro', 'Caracollo', 'El Choro', 'Paria'] },
-      { nombre: 'Abaroa', municipios: ['Challapata', 'Santuario de Quillacas'] },
-      { nombre: 'Carangas', municipios: ['Corque', 'Choquecota'] },
-      { nombre: 'Sajama', municipios: ['Curahuara de Carangas', 'Turco'] },
-      { nombre: 'Litoral', municipios: ['Huachacalla', 'Escara', 'Cruz de Machacamarca', 'Yunguyo de Litoral', 'Esmeralda'] },
-      { nombre: 'Poopó', municipios: ['Poopó', 'Pazña', 'Antequera'] },
-      { nombre: 'Dalence', municipios: ['Huanuni', 'Machacamarca'] },
-      { nombre: 'Ladislao Cabrera', municipios: ['Salinas de Garci Mendoza', 'Pampa Aullagas'] },
-      { nombre: 'Sabaya', municipios: ['Sabaya', 'Coipasa', 'Chipaya'] },
-      { nombre: 'Saucarí', municipios: ['Toledo'] },
-      { nombre: 'Tomás Barrón', municipios: ['Eucaliptus'] },
-      { nombre: 'Sud Carangas', municipios: ['Santiago de Andamarca', 'Belén de Andamarca'] },
-      { nombre: 'San Pedro de Totora', municipios: ['Totora'] },
-      { nombre: 'Sebastián Pagador', municipios: ['Santiago de Huari'] },
-      { nombre: 'Mejillones', municipios: ['La Rivera', 'Todos Santos', 'Carangas'] },
-      { nombre: 'Nor Carangas', municipios: ['Huayllamarca'] },
+      {
+        nombre: 'Cercado',
+        municipios: [
+          { nombre: 'Oruro' },
+          { nombre: 'Caracollo' },
+          { nombre: 'El Choro' },
+          { nombre: 'Paria' },
+        ],
+      },
+      {
+        nombre: 'Abaroa',
+        municipios: [{ nombre: 'Challapata' }, { nombre: 'Santuario de Quillacas' }],
+      },
+      { nombre: 'Carangas', municipios: [{ nombre: 'Corque' }, { nombre: 'Choquecota' }] },
+      { nombre: 'Sajama', municipios: [{ nombre: 'Curahuara de Carangas' }, { nombre: 'Turco' }] },
+      {
+        nombre: 'Litoral',
+        municipios: [
+          { nombre: 'Huachacalla' },
+          { nombre: 'Escara' },
+          { nombre: 'Cruz de Machacamarca' },
+          { nombre: 'Yunguyo de Litoral' },
+          { nombre: 'Esmeralda' },
+        ],
+      },
+      {
+        nombre: 'Poopó',
+        municipios: [{ nombre: 'Poopó' }, { nombre: 'Pazña' }, { nombre: 'Antequera' }],
+      },
+      { nombre: 'Dalence', municipios: [{ nombre: 'Huanuni' }, { nombre: 'Machacamarca' }] },
+      {
+        nombre: 'Ladislao Cabrera',
+        municipios: [{ nombre: 'Salinas de Garci Mendoza' }, { nombre: 'Pampa Aullagas' }],
+      },
+      {
+        nombre: 'Sabaya',
+        municipios: [{ nombre: 'Sabaya' }, { nombre: 'Coipasa' }, { nombre: 'Chipaya' }],
+      },
+      { nombre: 'Saucarí', municipios: [{ nombre: 'Toledo' }] },
+      { nombre: 'Tomás Barrón', municipios: [{ nombre: 'Eucaliptus' }] },
+      {
+        nombre: 'Sud Carangas',
+        municipios: [{ nombre: 'Santiago de Andamarca' }, { nombre: 'Belén de Andamarca' }],
+      },
+      { nombre: 'San Pedro de Totora', municipios: [{ nombre: 'Totora' }] },
+      { nombre: 'Sebastián Pagador', municipios: [{ nombre: 'Santiago de Huari' }] },
+      {
+        nombre: 'Mejillones',
+        municipios: [{ nombre: 'La Rivera' }, { nombre: 'Todos Santos' }, { nombre: 'Carangas' }],
+      },
+      { nombre: 'Nor Carangas', municipios: [{ nombre: 'Huayllamarca' }] },
     ],
   },
   {
     nombre: 'Potosí',
     provincias: [
-      { nombre: 'Frías', municipios: ['Potosí', 'Tinguipaya', 'Yocalla', 'Urmiri'] },
-      { nombre: 'Rafael Bustillo', municipios: ['Uncía', 'Chayanta', 'Llallagua', 'Chuquihuta'] },
-      { nombre: 'Cornelio Saavedra', municipios: ['Betanzos', 'Chaquí', 'Tacobamba'] },
-      { nombre: 'Chayanta', municipios: ['Colquechaca', 'Ravelo', 'Pocoata', 'Ocurí', 'San Pedro de Macha'] },
-      { nombre: 'Charcas', municipios: ['San Pedro de Buena Vista', 'Toro Toro'] },
-      { nombre: 'Nor Chichas', municipios: ['Santiago de Cotagaita', 'Vitichi'] },
-      { nombre: 'Alonso de Ibáñez', municipios: ['Sacaca', 'Caripuyo'] },
-      { nombre: 'Sud Chichas', municipios: ['Tupiza', 'Atocha'] },
-      { nombre: 'Nor Lípez', municipios: ['Colcha K', 'San Pedro de Quemes'] },
-      { nombre: 'Sud Lípez', municipios: ['San Pablo de Lípez', 'Mojinete', 'San Antonio de Esmoruco'] },
-      { nombre: 'Linares', municipios: ['Puna', 'Caiza D', 'Ckochas'] },
-      { nombre: 'Quijarro', municipios: ['Uyuni', 'Tomave', 'Porco'] },
-      { nombre: 'General Bilbao', municipios: ['Arampampa', 'Acasio'] },
-      { nombre: 'Daniel Campos', municipios: ['Llica', 'Tahua'] },
-      { nombre: 'Modesto Omiste', municipios: ['Villazón'] },
-      { nombre: 'Enrique Baldivieso', municipios: ['San Agustín'] },
+      {
+        nombre: 'Frías',
+        municipios: [
+          { nombre: 'Potosí' },
+          { nombre: 'Tinguipaya' },
+          { nombre: 'Yocalla' },
+          { nombre: 'Urmiri' },
+        ],
+      },
+      {
+        nombre: 'Rafael Bustillo',
+        municipios: [
+          { nombre: 'Uncía' },
+          { nombre: 'Chayanta' },
+          { nombre: 'Llallagua' },
+          { nombre: 'Chuquihuta' },
+        ],
+      },
+      {
+        nombre: 'Cornelio Saavedra',
+        municipios: [{ nombre: 'Betanzos' }, { nombre: 'Chaquí' }, { nombre: 'Tacobamba' }],
+      },
+      {
+        nombre: 'Chayanta',
+        municipios: [
+          { nombre: 'Colquechaca' },
+          { nombre: 'Ravelo' },
+          { nombre: 'Pocoata' },
+          { nombre: 'Ocurí' },
+          { nombre: 'San Pedro de Macha' },
+        ],
+      },
+      {
+        nombre: 'Charcas',
+        municipios: [{ nombre: 'San Pedro de Buena Vista' }, { nombre: 'Toro Toro' }],
+      },
+      {
+        nombre: 'Nor Chichas',
+        municipios: [{ nombre: 'Santiago de Cotagaita' }, { nombre: 'Vitichi' }],
+      },
+      { nombre: 'Alonso de Ibáñez', municipios: [{ nombre: 'Sacaca' }, { nombre: 'Caripuyo' }] },
+      { nombre: 'Sud Chichas', municipios: [{ nombre: 'Tupiza' }, { nombre: 'Atocha' }] },
+      {
+        nombre: 'Nor Lípez',
+        municipios: [{ nombre: 'Colcha K' }, { nombre: 'San Pedro de Quemes' }],
+      },
+      {
+        nombre: 'Sud Lípez',
+        municipios: [
+          { nombre: 'San Pablo de Lípez' },
+          { nombre: 'Mojinete' },
+          { nombre: 'San Antonio de Esmoruco' },
+        ],
+      },
+      {
+        nombre: 'Linares',
+        municipios: [{ nombre: 'Puna' }, { nombre: 'Caiza D' }, { nombre: 'Ckochas' }],
+      },
+      {
+        nombre: 'Quijarro',
+        municipios: [{ nombre: 'Uyuni' }, { nombre: 'Tomave' }, { nombre: 'Porco' }],
+      },
+      { nombre: 'General Bilbao', municipios: [{ nombre: 'Arampampa' }, { nombre: 'Acasio' }] },
+      { nombre: 'Daniel Campos', municipios: [{ nombre: 'Llica' }, { nombre: 'Tahua' }] },
+      { nombre: 'Modesto Omiste', municipios: [{ nombre: 'Villazón' }] },
+      { nombre: 'Enrique Baldivieso', municipios: [{ nombre: 'San Agustín' }] },
     ],
   },
   {
     nombre: 'Tarija',
     provincias: [
-      { nombre: 'Cercado', municipios: ['Tarija'] },
-      { nombre: 'Arce', municipios: ['Padcaya', 'Bermejo'] },
-      { nombre: 'Gran Chaco', municipios: ['Yacuiba', 'Caraparí', 'Villa Montes'] },
-      { nombre: 'José María Avilés', municipios: ['Uriondo', 'Yunchará'] },
-      { nombre: 'Méndez', municipios: ['San Lorenzo', 'El Puente'] },
-      { nombre: 'O\'Connor', municipios: ['Entre Ríos'] },
+      { nombre: 'Cercado', municipios: [{ nombre: 'Tarija' }] },
+      { nombre: 'Arce', municipios: [{ nombre: 'Padcaya' }, { nombre: 'Bermejo' }] },
+      {
+        nombre: 'Gran Chaco',
+        municipios: [{ nombre: 'Yacuiba' }, { nombre: 'Caraparí' }, { nombre: 'Villa Montes' }],
+      },
+      { nombre: 'José María Avilés', municipios: [{ nombre: 'Uriondo' }, { nombre: 'Yunchará' }] },
+      { nombre: 'Méndez', municipios: [{ nombre: 'San Lorenzo' }, { nombre: 'El Puente' }] },
+      { nombre: "O'Connor", municipios: [{ nombre: 'Entre Ríos' }] },
     ],
   },
   {
     nombre: 'Santa Cruz',
     provincias: [
-      { nombre: 'Andrés Ibáñez', municipios: ['Santa Cruz de la Sierra', 'Cotoca', 'Porongo', 'La Guardia', 'El Torno'] },
-      { nombre: 'Warnes', municipios: ['Warnes', 'Okinawa Uno'] },
-      { nombre: 'Velasco', municipios: ['San Ignacio de Velasco', 'San Miguel de Velasco', 'San Rafael de Velasco'] },
-      { nombre: 'Ichilo', municipios: ['Buena Vista', 'San Carlos', 'Villa Yapacaní', 'San Juan de Yapacaní'] },
-      { nombre: 'Chiquitos', municipios: ['San José de Chiquitos', 'Pailón', 'Roboré'] },
-      { nombre: 'Sara', municipios: ['Portachuelo', 'Santa Rosa del Sara', 'Colpa Bélgica'] },
-      { nombre: 'Cordillera', municipios: ['Lagunillas', 'Charagua', 'Cabezas', 'Cuevo', 'Gutiérrez (Kereimba Iyambae)', 'Camiri', 'Boyuibe'] },
-      { nombre: 'Vallegrande', municipios: ['Vallegrande', 'El Trigal', 'Moro Moro', 'Postrervalle', 'Pucará'] },
-      { nombre: 'Florida', municipios: ['Samaipata', 'Pampagrande', 'Mairana', 'Quirusillas'] },
-      { nombre: 'Obispo Santistevan', municipios: ['Montero', 'General Saavedra', 'Mineros', 'Fernández Alonso', 'San Pedro'] },
-      { nombre: 'Ñuflo de Chaves', municipios: ['Concepción', 'San Javier', 'San Ramón', 'San Julián', 'San Antonio de Lomerío', 'Cuatro Cañadas'] },
-      { nombre: 'Ángel Sandóval', municipios: ['San Matías'] },
-      { nombre: 'Caballero', municipios: ['Comarapa', 'Saipina'] },
-      { nombre: 'Germán Busch', municipios: ['Puerto Suárez', 'Puerto Quijarro', 'El Carmen Rivero Tórrez'] },
-      { nombre: 'Guarayos', municipios: ['Ascensión de Guarayos', 'Urubichá', 'El Puente'] },
+      {
+        nombre: 'Andrés Ibáñez',
+        municipios: [
+          { nombre: 'Santa Cruz de la Sierra' },
+          { nombre: 'Cotoca' },
+          { nombre: 'Porongo' },
+          { nombre: 'La Guardia' },
+          { nombre: 'El Torno' },
+        ],
+      },
+      { nombre: 'Warnes', municipios: [{ nombre: 'Warnes' }, { nombre: 'Okinawa Uno' }] },
+      {
+        nombre: 'Velasco',
+        municipios: [
+          { nombre: 'San Ignacio de Velasco' },
+          { nombre: 'San Miguel de Velasco' },
+          { nombre: 'San Rafael de Velasco' },
+        ],
+      },
+      {
+        nombre: 'Ichilo',
+        municipios: [
+          { nombre: 'Buena Vista' },
+          { nombre: 'San Carlos' },
+          { nombre: 'Villa Yapacaní' },
+          { nombre: 'San Juan de Yapacaní' },
+        ],
+      },
+      {
+        nombre: 'Chiquitos',
+        municipios: [
+          { nombre: 'San José de Chiquitos' },
+          { nombre: 'Pailón' },
+          { nombre: 'Roboré' },
+        ],
+      },
+      {
+        nombre: 'Sara',
+        municipios: [
+          { nombre: 'Portachuelo' },
+          { nombre: 'Santa Rosa del Sara' },
+          { nombre: 'Colpa Bélgica' },
+        ],
+      },
+      {
+        nombre: 'Cordillera',
+        municipios: [
+          { nombre: 'Lagunillas' },
+          { nombre: 'Charagua' },
+          { nombre: 'Cabezas' },
+          { nombre: 'Cuevo' },
+          { nombre: 'Gutiérrez (Kereimba Iyambae)' },
+          { nombre: 'Camiri' },
+          { nombre: 'Boyuibe' },
+        ],
+      },
+      {
+        nombre: 'Vallegrande',
+        municipios: [
+          { nombre: 'Vallegrande' },
+          { nombre: 'El Trigal' },
+          { nombre: 'Moro Moro' },
+          { nombre: 'Postrervalle' },
+          { nombre: 'Pucará' },
+        ],
+      },
+      {
+        nombre: 'Florida',
+        municipios: [
+          { nombre: 'Samaipata' },
+          { nombre: 'Pampagrande' },
+          { nombre: 'Mairana' },
+          { nombre: 'Quirusillas' },
+        ],
+      },
+      {
+        nombre: 'Obispo Santistevan',
+        municipios: [
+          { nombre: 'Montero' },
+          { nombre: 'General Saavedra' },
+          { nombre: 'Mineros' },
+          { nombre: 'Fernández Alonso' },
+          { nombre: 'San Pedro' },
+        ],
+      },
+      {
+        nombre: 'Ñuflo de Chaves',
+        municipios: [
+          { nombre: 'Concepción' },
+          { nombre: 'San Javier' },
+          { nombre: 'San Ramón' },
+          { nombre: 'San Julián' },
+          { nombre: 'San Antonio de Lomerío' },
+          { nombre: 'Cuatro Cañadas' },
+        ],
+      },
+      { nombre: 'Ángel Sandóval', municipios: [{ nombre: 'San Matías' }] },
+      { nombre: 'Caballero', municipios: [{ nombre: 'Comarapa' }, { nombre: 'Saipina' }] },
+      {
+        nombre: 'Germán Busch',
+        municipios: [
+          { nombre: 'Puerto Suárez' },
+          { nombre: 'Puerto Quijarro' },
+          { nombre: 'El Carmen Rivero Tórrez' },
+        ],
+      },
+      {
+        nombre: 'Guarayos',
+        municipios: [
+          { nombre: 'Ascensión de Guarayos' },
+          { nombre: 'Urubichá' },
+          { nombre: 'El Puente' },
+        ],
+      },
     ],
   },
   {
     nombre: 'Beni',
     provincias: [
-      { nombre: 'Cercado', municipios: ['Trinidad', 'San Javier'] },
-      { nombre: 'Vaca Díez', municipios: ['Riberalta', 'Guayaramerín'] },
-      { nombre: 'General José Ballivián', municipios: ['Reyes', 'San Borja', 'Santa Rosa', 'Rurrenabaque'] },
-      { nombre: 'Yacuma', municipios: ['Santa Ana del Yacuma', 'Exaltación'] },
-      { nombre: 'Moxos', municipios: ['San Ignacio de Moxos'] },
-      { nombre: 'Marbán', municipios: ['Loreto', 'San Andrés'] },
-      { nombre: 'Mamoré', municipios: ['San Joaquín', 'San Ramón', 'Puerto Siles'] },
-      { nombre: 'Iténez', municipios: ['Magdalena', 'Baures', 'Huacaraje'] },
+      { nombre: 'Cercado', municipios: [{ nombre: 'Trinidad' }, { nombre: 'San Javier' }] },
+      { nombre: 'Vaca Díez', municipios: [{ nombre: 'Riberalta' }, { nombre: 'Guayaramerín' }] },
+      {
+        nombre: 'General José Ballivián',
+        municipios: [
+          { nombre: 'Reyes' },
+          { nombre: 'San Borja' },
+          { nombre: 'Santa Rosa' },
+          { nombre: 'Rurrenabaque' },
+        ],
+      },
+      {
+        nombre: 'Yacuma',
+        municipios: [{ nombre: 'Santa Ana del Yacuma' }, { nombre: 'Exaltación' }],
+      },
+      { nombre: 'Moxos', municipios: [{ nombre: 'San Ignacio de Moxos' }] },
+      { nombre: 'Marbán', municipios: [{ nombre: 'Loreto' }, { nombre: 'San Andrés' }] },
+      {
+        nombre: 'Mamoré',
+        municipios: [
+          { nombre: 'San Joaquín' },
+          { nombre: 'San Ramón' },
+          { nombre: 'Puerto Siles' },
+        ],
+      },
+      {
+        nombre: 'Iténez',
+        municipios: [{ nombre: 'Magdalena' }, { nombre: 'Baures' }, { nombre: 'Huacaraje' }],
+      },
     ],
   },
   {
     nombre: 'Pando',
     provincias: [
-      { nombre: 'Nicolás Suárez', municipios: ['Cobija', 'Porvenir', 'Bolpebra', 'Bella Flor'] },
-      { nombre: 'Manuripi', municipios: ['Puerto Rico', 'San Pedro', 'Filadelfia'] },
-      { nombre: 'Madre de Dios', municipios: ['Puerto Gonzalo Moreno', 'San Lorenzo', 'Sena'] },
-      { nombre: 'Abuná', municipios: ['Santa Rosa del Abuná', 'Ingavi'] },
-      { nombre: 'General Federico Román', municipios: ['Nueva Esperanza', 'Villa Nueva', 'Santos Mercado'] },
+      {
+        nombre: 'Nicolás Suárez',
+        municipios: [
+          { nombre: 'Cobija' },
+          { nombre: 'Porvenir' },
+          { nombre: 'Bolpebra' },
+          { nombre: 'Bella Flor' },
+        ],
+      },
+      {
+        nombre: 'Manuripi',
+        municipios: [{ nombre: 'Puerto Rico' }, { nombre: 'San Pedro' }, { nombre: 'Filadelfia' }],
+      },
+      {
+        nombre: 'Madre de Dios',
+        municipios: [
+          { nombre: 'Puerto Gonzalo Moreno' },
+          { nombre: 'San Lorenzo' },
+          { nombre: 'Sena' },
+        ],
+      },
+      { nombre: 'Abuná', municipios: [{ nombre: 'Santa Rosa del Abuná' }, { nombre: 'Ingavi' }] },
+      {
+        nombre: 'General Federico Román',
+        municipios: [
+          { nombre: 'Nueva Esperanza' },
+          { nombre: 'Villa Nueva' },
+          { nombre: 'Santos Mercado' },
+        ],
+      },
     ],
   },
 ];
@@ -216,14 +671,14 @@ module.exports = {
         }
 
         const nuevos = [];
-        for (const nombreMunicipio of prov.municipios) {
+        for (const muni of prov.municipios) {
           const idMunicipio = await findId(
             queryInterface,
             'SELECT id_municipio AS id FROM municipios WHERE nombre_municipio = :nombre AND id_provincia = :idProvincia LIMIT 1',
-            { nombre: nombreMunicipio, idProvincia },
+            { nombre: muni.nombre, idProvincia },
           );
           if (idMunicipio === null) {
-            nuevos.push({ nombre_municipio: nombreMunicipio, id_provincia: idProvincia });
+            nuevos.push({ nombre_municipio: muni.nombre, id_provincia: idProvincia });
           }
         }
 
