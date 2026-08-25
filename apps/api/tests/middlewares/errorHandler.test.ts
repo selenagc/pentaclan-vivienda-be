@@ -10,12 +10,12 @@ describe('errorHandler', () => {
   });
   app.use(errorHandler);
 
-  it('responde 400 cuando el body no es JSON valido', async () => {
+  it('responds 400 when the body is not valid JSON', async () => {
     const res = await request(app)
       .post('/echo')
       .set('Content-Type', 'application/json')
       // Lo que manda Postman cuando `{{entidadId}}` no esta definida.
-      .send('{"nombre":"x","entidadPublicaId":}');
+      .send('{"name":"x","publicEntityId":}');
 
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({

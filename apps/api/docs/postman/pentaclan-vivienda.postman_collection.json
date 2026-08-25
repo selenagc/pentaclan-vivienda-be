@@ -65,14 +65,14 @@
                   "const VALID_ROLES = ['admin', 'social_lead', 'technical_lead', 'project_supervisor'];",
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "const data = res.data;",
-                  "pm.test('accessToken present', () => pm.expect(data.accessToken).to.be.a('string'));",
-                  "pm.test('PV-10: role is valid', () => pm.expect(VALID_ROLES).to.include(data.user.role));",
-                  "pm.environment.set('accessToken', data.accessToken);",
-                  "pm.environment.set('currentRole', data.user.role);",
-                  "pm.environment.set('userId', data.user.id);",
-                  "pm.environment.set('userName', data.user.name);",
-                  "console.log('Logged in as', data.user.email, '-> role:', data.user.role);"
+                  "const payload = res.data;",
+                  "pm.test('accessToken present', () => pm.expect(payload.accessToken).to.be.a('string'));",
+                  "pm.test('PV-10: role is valid', () => pm.expect(VALID_ROLES).to.include(payload.user.role));",
+                  "pm.environment.set('accessToken', payload.accessToken);",
+                  "pm.environment.set('currentRole', payload.user.role);",
+                  "pm.environment.set('userId', payload.user.id);",
+                  "pm.environment.set('userName', payload.user.name);",
+                  "console.log('Logged in as', payload.user.email, '-> role:', payload.user.role);"
                 ]
               }
             }
@@ -230,7 +230,10 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "pm.test('no passwordHash leaked', () => pm.expect(res.data).to.not.have.property('passwordHash'));"
+                  "pm.test('no passwordHash leaked', () => pm.expect(res.data).to.not.have.property('passwordHash'));",
+                  "// El PATCH cambia el propio nombre: se refresca `userName` para que los",
+                  "// tests de Projects comparen contra el valor vigente y no contra el viejo.",
+                  "pm.environment.set('userName', res.data.name);"
                 ]
               }
             }
@@ -258,14 +261,14 @@
       ]
     },
     {
-      "name": "Geografia",
+      "name": "Geography",
       "item": [
         {
-          "name": "GET /departamentos",
+          "name": "GET /departments",
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/departamentos", "host": ["{{baseUrl}}"], "path": ["departamentos"] }
+            "url": { "raw": "{{baseUrl}}/departments", "host": ["{{baseUrl}}"], "path": ["departments"] }
           },
           "event": [
             {
@@ -276,21 +279,21 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
                   "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));",
-                  "if (res.data.length > 0) { pm.environment.set('departamentoId', res.data[0].id); }"
+                  "if (res.data.length > 0) { pm.environment.set('departmentId', res.data[0].id); }"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /departamentos/:id/provincias",
+          "name": "GET /departments/:id/provinces",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/departamentos/{{departamentoId}}/provincias",
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/provinces",
               "host": ["{{baseUrl}}"],
-              "path": ["departamentos", "{{departamentoId}}", "provincias"]
+              "path": ["departments", "{{departmentId}}", "provinces"]
             }
           },
           "event": [
@@ -301,23 +304,23 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "const esperado = Number(pm.environment.get('departamentoId'));",
-                  "pm.test('solo provincias del departamento pedido', () => pm.expect(res.data.every((p) => p.departamentoId === esperado)).to.be.true);",
-                  "if (res.data.length > 0) { pm.environment.set('provinciaId', res.data[0].id); }"
+                  "const esperado = Number(pm.environment.get('departmentId'));",
+                  "pm.test('solo provincias del departamento pedido', () => pm.expect(res.data.every((p) => p.departmentId === esperado)).to.be.true);",
+                  "if (res.data.length > 0) { pm.environment.set('provinceId', res.data[0].id); }"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /provincias/:id/municipios",
+          "name": "GET /provinces/:id/municipalities",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/provincias/{{provinciaId}}/municipios",
+              "raw": "{{baseUrl}}/provinces/{{provinceId}}/municipalities",
               "host": ["{{baseUrl}}"],
-              "path": ["provincias", "{{provinciaId}}", "municipios"]
+              "path": ["provinces", "{{provinceId}}", "municipalities"]
             }
           },
           "event": [
@@ -328,25 +331,25 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "const esperado = Number(pm.environment.get('provinciaId'));",
-                  "pm.test('solo municipios de la provincia pedida', () => pm.expect(res.data.every((m) => m.provinciaId === esperado)).to.be.true);",
+                  "const esperado = Number(pm.environment.get('provinceId'));",
+                  "pm.test('solo municipios de la provincia pedida', () => pm.expect(res.data.every((m) => m.provinceId === esperado)).to.be.true);",
                   "// Los proyectos se registran en un municipio: se guarda el primero",
-                  "// para que la carpeta Proyectos pueda usarlo con {{municipioId}}.",
-                  "if (res.data.length) pm.environment.set('municipioId', res.data[0].id);"
+                  "// para que la carpeta Projects pueda usarlo con {{municipalityId}}.",
+                  "if (res.data.length) pm.environment.set('municipalityId', res.data[0].id);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /departamentos/:id/provincias (404 padre inexistente)",
+          "name": "GET /departments/:id/provinces (404 padre inexistente)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/departamentos/999999/provincias",
+              "raw": "{{baseUrl}}/departments/999999/provinces",
               "host": ["{{baseUrl}}"],
-              "path": ["departamentos", "999999", "provincias"]
+              "path": ["departments", "999999", "provinces"]
             }
           },
           "event": [
@@ -362,12 +365,12 @@
           ]
         },
         {
-          "name": "POST /departamentos (404: catalogo de solo lectura)",
+          "name": "POST /departments (404: catalogo de solo lectura)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Nuevo\"\n}" },
-            "url": { "raw": "{{baseUrl}}/departamentos", "host": ["{{baseUrl}}"], "path": ["departamentos"] }
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nuevo\"\n}" },
+            "url": { "raw": "{{baseUrl}}/departments", "host": ["{{baseUrl}}"], "path": ["departments"] }
           },
           "event": [
             {
@@ -384,14 +387,14 @@
       ]
     },
     {
-      "name": "Entidades publicas",
+      "name": "Public entities",
       "item": [
         {
-          "name": "GET /entidades",
+          "name": "GET /public-entities",
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/entidades", "host": ["{{baseUrl}}"], "path": ["entidades"] }
+            "url": { "raw": "{{baseUrl}}/public-entities", "host": ["{{baseUrl}}"], "path": ["public-entities"] }
           },
           "event": [
             {
@@ -402,22 +405,22 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
                   "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));",
-                  "pm.test('el NIT es unico por entidad', () => pm.expect(new Set(res.data.map((e) => e.nit)).size).to.eql(res.data.length));",
-                  "if (res.data.length > 0) { pm.environment.set('entidadId', res.data[0].id); }"
+                  "pm.test('el NIT es unico por entidad', () => pm.expect(new Set(res.data.map((e) => e.taxId)).size).to.eql(res.data.length));",
+                  "if (res.data.length > 0) { pm.environment.set('publicEntityId', res.data[0].id); }"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /entidades/:id",
+          "name": "GET /public-entities/:id",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/entidades/{{entidadId}}",
+              "raw": "{{baseUrl}}/public-entities/{{publicEntityId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["entidades", "{{entidadId}}"]
+              "path": ["public-entities", "{{publicEntityId}}"]
             }
           },
           "event": [
@@ -428,22 +431,22 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "pm.test('devuelve la entidad pedida', () => pm.expect(res.data.id).to.eql(Number(pm.environment.get('entidadId'))));",
-                  "pm.test('sigla AEVIVIENDA', () => pm.expect(res.data.sigla).to.eql('AEVIVIENDA'));"
+                  "pm.test('devuelve la entidad pedida', () => pm.expect(res.data.id).to.eql(Number(pm.environment.get('publicEntityId'))));",
+                  "pm.test('sigla AEVIVIENDA', () => pm.expect(res.data.acronym).to.eql('AEVIVIENDA'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /entidades/:id (404 inexistente)",
+          "name": "GET /public-entities/:id (404 inexistente)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/entidades/999999",
+              "raw": "{{baseUrl}}/public-entities/999999",
               "host": ["{{baseUrl}}"],
-              "path": ["entidades", "999999"]
+              "path": ["public-entities", "999999"]
             }
           },
           "event": [
@@ -460,12 +463,12 @@
           ]
         },
         {
-          "name": "POST /entidades (404: catalogo de solo lectura)",
+          "name": "POST /public-entities (404: catalogo de solo lectura)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"nit\": 192310023,\n  \"nombre\": \"Nueva\",\n  \"sigla\": \"NUEVA\"\n}" },
-            "url": { "raw": "{{baseUrl}}/entidades", "host": ["{{baseUrl}}"], "path": ["entidades"] }
+            "body": { "mode": "raw", "raw": "{\n  \"taxId\": 192310023,\n  \"name\": \"Nueva\",\n  \"acronym\": \"NUEVA\"\n}" },
+            "url": { "raw": "{{baseUrl}}/public-entities", "host": ["{{baseUrl}}"], "path": ["public-entities"] }
           },
           "event": [
             {
@@ -482,18 +485,18 @@
       ]
     },
     {
-      "name": "Proyectos",
+      "name": "Projects",
       "item": [
         {
-          "name": "POST /proyectos",
+          "name": "POST /projects",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Construccion de viviendas sociales - Fase I\",\n  \"nroContrato\": \"AEV-2026-{{$randomInt}}\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}}\n}"
+              "raw": "{\n  \"name\": \"Construccion de viviendas sociales - Fase I\",\n  \"contractNo\": \"AEV-2026-{{$randomInt}}\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}}\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
           },
           "event": [
             {
@@ -503,27 +506,27 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const res = pm.response.json();",
-                  "pm.environment.set('proyectoId', res.data.id);",
-                  "pm.environment.set('nroContrato', res.data.nroContrato);",
-                  "pm.test('el creador sale de la sesion', () => pm.expect(res.data.usuarioNombre).to.eql(pm.environment.get('userName')));",
-                  "pm.test('asocia la entidad financiadora', () => pm.expect(res.data.entidadPublica.id).to.eql(Number(pm.environment.get('entidadId'))));",
-                  "pm.test('registra el municipio', () => pm.expect(res.data.municipio.id).to.eql(Number(pm.environment.get('municipioId'))));",
-                  "pm.test('resuelve la cadena geografica', () => pm.expect(res.data.municipio.departamento).to.have.property('nombre'));"
+                  "pm.environment.set('projectId', res.data.id);",
+                  "pm.environment.set('contractNo', res.data.contractNo);",
+                  "pm.test('el creador sale de la sesion', () => pm.expect(res.data.userName).to.eql(pm.environment.get('userName')));",
+                  "pm.test('asocia la entidad financiadora', () => pm.expect(res.data.publicEntity.id).to.eql(Number(pm.environment.get('publicEntityId'))));",
+                  "pm.test('registra el municipio', () => pm.expect(res.data.municipality.id).to.eql(Number(pm.environment.get('municipalityId'))));",
+                  "pm.test('resuelve la cadena geografica', () => pm.expect(res.data.municipality.department).to.have.property('name'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "POST /proyectos (400: usuarioId desde el cliente)",
+          "name": "POST /projects (400: userId desde el cliente)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Suplantacion\",\n  \"nroContrato\": \"AEV-FAKE-001\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}},\n  \"usuarioId\": \"00000000-0000-4000-8000-000000000000\"\n}"
+              "raw": "{\n  \"name\": \"Suplantacion\",\n  \"contractNo\": \"AEV-FAKE-001\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}},\n  \"userId\": \"00000000-0000-4000-8000-000000000000\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
           },
           "event": [
             {
@@ -532,22 +535,22 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
-                  "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('usuarioId'));"
+                  "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('userId'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "POST /proyectos (404: entidad inexistente)",
+          "name": "POST /projects (404: entidad inexistente)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Sin financiador\",\n  \"nroContrato\": \"AEV-NOENT-001\",\n  \"entidadPublicaId\": 999999,\n  \"municipioId\": {{municipioId}}\n}"
+              "raw": "{\n  \"name\": \"Sin financiador\",\n  \"contractNo\": \"AEV-NOENT-001\",\n  \"publicEntityId\": 999999,\n  \"municipalityId\": {{municipalityId}}\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
           },
           "event": [
             {
@@ -562,15 +565,15 @@
           ]
         },
         {
-          "name": "POST /proyectos (404: municipio inexistente)",
+          "name": "POST /projects (404: municipio inexistente)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Sin ubicacion\",\n  \"nroContrato\": \"AEV-NOMUN-001\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": 999999\n}"
+              "raw": "{\n  \"name\": \"Sin ubicacion\",\n  \"contractNo\": \"AEV-NOMUN-001\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": 999999\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
           },
           "event": [
             {
@@ -579,22 +582,22 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
-                  "pm.test('el motivo es el municipio', () => pm.expect(pm.response.text()).to.include('Municipio'));"
+                  "pm.test('el motivo es el municipio', () => pm.expect(pm.response.text()).to.include('Municipality'));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "POST /proyectos (409: nro de contrato duplicado)",
+          "name": "POST /projects (409: nro de contrato duplicado)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Contrato repetido\",\n  \"nroContrato\": \"{{nroContrato}}\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}}\n}"
+              "raw": "{\n  \"name\": \"Contrato repetido\",\n  \"contractNo\": \"{{contractNo}}\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}}\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
           },
           "event": [
             {
@@ -609,16 +612,16 @@
           ]
         },
         {
-          "name": "POST /proyectos (401: sin sesion)",
+          "name": "POST /projects (401: sin sesion)",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Sin sesion\",\n  \"nroContrato\": \"AEV-NOAUTH-001\",\n  \"entidadPublicaId\": 1,\n  \"municipioId\": 1\n}"
+              "raw": "{\n  \"name\": \"Sin sesion\",\n  \"contractNo\": \"AEV-NOAUTH-001\",\n  \"publicEntityId\": 1,\n  \"municipalityId\": 1\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
           },
           "event": [
             {
@@ -633,7 +636,7 @@
           ]
         },
         {
-          "name": "POST /proyectos (403: rol sin permiso)",
+          "name": "POST /projects (403: rol sin permiso)",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
@@ -641,8 +644,8 @@
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Authorization", "value": "Bearer {{techToken}}" }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Rol sin permiso\",\n  \"nroContrato\": \"AEV-FORBIDDEN-001\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}}\n}" },
-            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Rol sin permiso\",\n  \"contractNo\": \"AEV-FORBIDDEN-001\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}}\n}" },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
           },
           "event": [
             {
@@ -677,14 +680,14 @@
           ]
         },
         {
-          "name": "GET /proyectos",
+          "name": "GET /projects",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/proyectos?page=1&limit=20",
+              "raw": "{{baseUrl}}/projects?page=1&limit=20",
               "host": ["{{baseUrl}}"],
-              "path": ["proyectos"],
+              "path": ["projects"],
               "query": [
                 { "key": "page", "value": "1" },
                 { "key": "limit", "value": "20" }
@@ -707,15 +710,15 @@
           ]
         },
         {
-          "name": "GET /proyectos?usuarioId (trazabilidad)",
+          "name": "GET /projects?userId (trazabilidad)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/proyectos?usuarioId={{userId}}",
+              "raw": "{{baseUrl}}/projects?userId={{userId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["proyectos"],
-              "query": [{ "key": "usuarioId", "value": "{{userId}}" }]
+              "path": ["projects"],
+              "query": [{ "key": "userId", "value": "{{userId}}" }]
             }
           },
           "event": [
@@ -728,22 +731,22 @@
                   "const res = pm.response.json();",
                   "// se filtra por el id del creador, pero la respuesta trae su nombre",
                   "const esperado = pm.environment.get('userName');",
-                  "pm.test('solo proyectos del creador pedido', () => pm.expect(res.data.every((p) => p.usuarioNombre === esperado)).to.be.true);"
+                  "pm.test('solo proyectos del creador pedido', () => pm.expect(res.data.every((p) => p.userName === esperado)).to.be.true);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /proyectos?municipioId (ubicacion)",
+          "name": "GET /projects?municipalityId (ubicacion)",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/proyectos?municipioId={{municipioId}}",
+              "raw": "{{baseUrl}}/projects?municipalityId={{municipalityId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["proyectos"],
-              "query": [{ "key": "municipioId", "value": "{{municipioId}}" }]
+              "path": ["projects"],
+              "query": [{ "key": "municipalityId", "value": "{{municipalityId}}" }]
             }
           },
           "event": [
@@ -754,19 +757,19 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "const esperado = Number(pm.environment.get('municipioId'));",
-                  "pm.test('solo proyectos del municipio pedido', () => pm.expect(res.data.every((p) => p.municipio.id === esperado)).to.be.true);"
+                  "const esperado = Number(pm.environment.get('municipalityId'));",
+                  "pm.test('solo proyectos del municipio pedido', () => pm.expect(res.data.every((p) => p.municipality.id === esperado)).to.be.true);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /proyectos/:id",
+          "name": "GET /projects/:id",
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/proyectos/{{proyectoId}}", "host": ["{{baseUrl}}"], "path": ["proyectos", "{{proyectoId}}"] }
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
           },
           "event": [
             {
@@ -776,22 +779,22 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "pm.test('devuelve el proyecto pedido', () => pm.expect(res.data.id).to.eql(pm.environment.get('proyectoId')));"
+                  "pm.test('devuelve el proyecto pedido', () => pm.expect(res.data.id).to.eql(pm.environment.get('projectId')));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "PUT /proyectos/:id",
+          "name": "PUT /projects/:id",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Construccion de viviendas sociales - Fase II\"\n}"
+              "raw": "{\n  \"name\": \"Construccion de viviendas sociales - Fase II\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos/{{proyectoId}}", "host": ["{{baseUrl}}"], "path": ["proyectos", "{{proyectoId}}"] }
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
           },
           "event": [
             {
@@ -801,23 +804,23 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
-                  "pm.test('actualiza el nombre', () => pm.expect(res.data.nombre).to.include('Fase II'));",
-                  "pm.test('el creador no cambia', () => pm.expect(res.data.usuarioNombre).to.eql(pm.environment.get('userName')));"
+                  "pm.test('actualiza el nombre', () => pm.expect(res.data.name).to.include('Fase II'));",
+                  "pm.test('el creador no cambia', () => pm.expect(res.data.userName).to.eql(pm.environment.get('userName')));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "PUT /proyectos/:id (400: intenta cambiar el creador)",
+          "name": "PUT /projects/:id (400: intenta cambiar el creador)",
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"usuarioId\": \"00000000-0000-4000-8000-000000000000\"\n}"
+              "raw": "{\n  \"userId\": \"00000000-0000-4000-8000-000000000000\"\n}"
             },
-            "url": { "raw": "{{baseUrl}}/proyectos/{{proyectoId}}", "host": ["{{baseUrl}}"], "path": ["proyectos", "{{proyectoId}}"] }
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
           },
           "event": [
             {
@@ -832,11 +835,11 @@
           ]
         },
         {
-          "name": "DELETE /proyectos/:id (404: fuera de alcance)",
+          "name": "DELETE /projects/:id (404: fuera de alcance)",
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/proyectos/{{proyectoId}}", "host": ["{{baseUrl}}"], "path": ["proyectos", "{{proyectoId}}"] }
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
           },
           "event": [
             {

@@ -120,14 +120,21 @@ Pragmatic Clean Architecture under `apps/api/src`:
 - `shared/`         errors, HTTP helpers, env config
 - `modules/`        placeholder folders for upcoming modules (clients, files, reports)
 
+### Naming convention
+
+Identifiers, database objects, routes and file names are in English; comments
+and internal docs are in Spanish. Read
+[docs/CONVENCIONES-DE-NOMENCLATURA.md](docs/CONVENCIONES-DE-NOMENCLATURA.md)
+before adding a new module.
+
 ## Module status
 
 | Module    | Status                                       |
 |-----------|----------------------------------------------|
 | Auth      | Implemented (login/refresh/logout/me)        |
-| Proyectos | Implemented (create/read/update, audited creator) |
-| Geografia | Implemented (read-only catalog, seeded)      |
-| Entidades | Implemented (read-only catalog, seeded)      |
+| Projects  | Implemented (create/read/update, audited creator) |
+| Geography | Implemented (read-only catalog, seeded)      |
+| Public entities | Implemented (read-only catalog, seeded) |
 | Clients   | Placeholder (returns 501)                    |
 | Files     | Placeholder, S3 adapter scaffolded           |
 | Reports   | Placeholder (returns 501)                    |

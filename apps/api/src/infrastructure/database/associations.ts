@@ -1,34 +1,34 @@
-import { DepartamentoModel } from './models/DepartamentoModel.js';
-import { ProvinciaModel } from './models/ProvinciaModel.js';
-import { MunicipioModel } from './models/MunicipioModel.js';
-import { EntidadPublicaModel } from './models/EntidadPublicaModel.js';
-import { ProyectoModel } from './models/ProyectoModel.js';
+import { DepartmentModel } from './models/DepartmentModel.js';
+import { ProvinceModel } from './models/ProvinceModel.js';
+import { MunicipalityModel } from './models/MunicipalityModel.js';
+import { PublicEntityModel } from './models/PublicEntityModel.js';
+import { ProjectModel } from './models/ProjectModel.js';
 import { UserModel } from './models/UserModel.js';
 
 // Jerarquia del catalogo geografico: Departamento -> Provincia -> Municipio.
 // Se declara aqui (y no dentro de cada modelo) para evitar imports circulares.
-DepartamentoModel.hasMany(ProvinciaModel, {
-  foreignKey: 'departamentoId',
+DepartmentModel.hasMany(ProvinceModel, {
+  foreignKey: 'departmentId',
   sourceKey: 'id',
-  as: 'provincias',
+  as: 'provinces',
   onDelete: 'RESTRICT',
 });
-ProvinciaModel.belongsTo(DepartamentoModel, {
-  foreignKey: 'departamentoId',
+ProvinceModel.belongsTo(DepartmentModel, {
+  foreignKey: 'departmentId',
   targetKey: 'id',
-  as: 'departamento',
+  as: 'department',
 });
 
-ProvinciaModel.hasMany(MunicipioModel, {
-  foreignKey: 'provinciaId',
+ProvinceModel.hasMany(MunicipalityModel, {
+  foreignKey: 'provinceId',
   sourceKey: 'id',
-  as: 'municipios',
+  as: 'municipalities',
   onDelete: 'RESTRICT',
 });
-MunicipioModel.belongsTo(ProvinciaModel, {
-  foreignKey: 'provinciaId',
+MunicipalityModel.belongsTo(ProvinceModel, {
+  foreignKey: 'provinceId',
   targetKey: 'id',
-  as: 'provincia',
+  as: 'province',
 });
 
 // Las entidades publicas no cuelgan de un departamento (PV-19): son un catalogo
@@ -37,40 +37,40 @@ MunicipioModel.belongsTo(ProvinciaModel, {
 
 // Proyectos (PV-21): entidad financiadora y usuario creador. Ambas relaciones
 // son RESTRICT, para que no se pueda borrar lo que un proyecto referencia.
-EntidadPublicaModel.hasMany(ProyectoModel, {
-  foreignKey: 'entidadPublicaId',
+PublicEntityModel.hasMany(ProjectModel, {
+  foreignKey: 'publicEntityId',
   sourceKey: 'id',
-  as: 'proyectos',
+  as: 'projects',
   onDelete: 'RESTRICT',
 });
-ProyectoModel.belongsTo(EntidadPublicaModel, {
-  foreignKey: 'entidadPublicaId',
+ProjectModel.belongsTo(PublicEntityModel, {
+  foreignKey: 'publicEntityId',
   targetKey: 'id',
-  as: 'entidadPublica',
+  as: 'publicEntity',
 });
 
 // Ubicacion del proyecto: se resuelve hasta el departamento a traves de la
 // jerarquia del catalogo, por eso alcanza con la FK al municipio.
-MunicipioModel.hasMany(ProyectoModel, {
-  foreignKey: 'municipioId',
+MunicipalityModel.hasMany(ProjectModel, {
+  foreignKey: 'municipalityId',
   sourceKey: 'id',
-  as: 'proyectos',
+  as: 'projects',
   onDelete: 'RESTRICT',
 });
-ProyectoModel.belongsTo(MunicipioModel, {
-  foreignKey: 'municipioId',
+ProjectModel.belongsTo(MunicipalityModel, {
+  foreignKey: 'municipalityId',
   targetKey: 'id',
-  as: 'municipio',
+  as: 'municipality',
 });
 
-UserModel.hasMany(ProyectoModel, {
-  foreignKey: 'usuarioId',
+UserModel.hasMany(ProjectModel, {
+  foreignKey: 'userId',
   sourceKey: 'id',
-  as: 'proyectos',
+  as: 'projects',
   onDelete: 'RESTRICT',
 });
-ProyectoModel.belongsTo(UserModel, {
-  foreignKey: 'usuarioId',
+ProjectModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
   targetKey: 'id',
-  as: 'usuario',
+  as: 'user',
 });

@@ -23,12 +23,12 @@ Todo lo demás se rellena solo al ejecutar las peticiones en orden.
 | `currentRole`    | `Auth > POST /auth/login`         | `admin`                                |
 | `userId`         | `Auth > POST /auth/login`         | `68649e6b-b56e-418f-bb4b-a97f8bda6bbf` |
 | `newUserId`      | `Users > POST /users`             | UUID                                   |
-| `departamentoId` | `Geografia > GET /departamentos`  | `5`                                    |
-| `provinciaId`    | `Geografia > GET .../provincias`  | id de la primera provincia             |
-| `municipioId`    | `Geografia > GET .../municipios`  | id del primer municipio                |
-| `entidadId`      | `Entidades publicas > GET /entidades` | `1`                                |
-| `proyectoId`     | `Proyectos > POST /proyectos`     | UUID                                   |
-| `nroContrato`    | `Proyectos > POST /proyectos`     | `AEV-2026-XXXX`                        |
+| `departmentId` | `Geography > GET /departments`  | `5`                                    |
+| `provinceId`    | `Geography > GET .../provinces`  | id de la primera provincia             |
+| `municipalityId`    | `Geography > GET .../municipalities`  | id del primer municipio                |
+| `publicEntityId`      | `Public entities > GET /public-entities` | `1`                                |
+| `projectId`     | `Projects > POST /projects`     | UUID                                   |
+| `contractNo`    | `Projects > POST /projects`     | `AEV-2026-XXXX`                        |
 
 ### Se rellenan a mano
 
@@ -44,7 +44,7 @@ Todo lo demás se rellena solo al ejecutar las peticiones en orden.
 
 ## Datos reales en la base
 
-### Entidades públicas (`entidadPublicaId`)
+### Entidades públicas (`publicEntityId`)
 
 Los 9 registros comparten el NIT `192310023`; lo que cambia es el departamento.
 
@@ -74,108 +74,108 @@ Contraseña de todos los no-admin: `Test1234!` (o el valor de `SEED_TEST_PASSWOR
 La colección está ordenada para correrse de arriba abajo con el Runner:
 
 ```text
-Health → Auth → Users → Geografia → Entidades publicas → Proyectos
+Health → Auth → Users → Geography → Public entities → Proyectos
 ```
 
-**Proyectos va al final a propósito**: necesita `entidadId` y `municipioId`, que
+**Proyectos va al final a propósito**: necesita `publicEntityId` y `municipalityId`, que
 los rellenan las carpetas de Entidades públicas y Geografía. Si ejecutas
 Proyectos suelto sin haber pasado por ahí, el `POST` fallará porque
-`{{entidadId}}` o `{{municipioId}}` llegarán vacíos.
+`{{publicEntityId}}` o `{{municipalityId}}` llegarán vacíos.
 
-## Peticiones de la carpeta Proyectos
+## Peticiones de la carpeta Projects
 
-### 1. `POST /proyectos` — caso feliz
+### 1. `POST /projects` — caso feliz
 
 ```json
 {
-  "nombre": "Construccion de viviendas sociales - Fase I",
-  "nroContrato": "AEV-2026-{{$randomInt}}",
-  "entidadPublicaId": {{entidadId}},
-  "municipioId": {{municipioId}}
+  "name": "Construccion de viviendas sociales - Fase I",
+  "contractNo": "AEV-2026-{{$randomInt}}",
+  "publicEntityId": {{publicEntityId}},
+  "municipalityId": {{municipalityId}}
 }
 ```
 
 `{{$randomInt}}` es una variable dinámica de Postman: evita el 409 al reejecutar,
-porque `nro_contrato` es único.
+porque `contract_no` es único.
 
-**Espera 201.** Verifica que `usuarioId` coincide con el `userId` de la sesión
-(nunca se envía en el body) y que `entidadPublica.id` es el que mandaste. La
-respuesta trae la entidad y la ubicación ya resueltas:
+**Espera 201.** Verifica que `userName` corresponde al usuario de la sesión
+(el creador nunca se envía en el body) y que `publicEntity.id` es el que
+mandaste. La respuesta trae la entidad y la ubicación ya resueltas:
 
 ```json
-"entidadPublica": {
+"publicEntity": {
   "id": 2,
-  "nombre": "Agencia Estatal de Vivienda"
+  "name": "Agencia Estatal de Vivienda"
 },
-"municipio": {
+"municipality": {
   "id": 100,
-  "nombre": "Sacaba",
-  "provincia": { "id": 20, "nombre": "Chapare" },
-  "departamento": { "id": 2, "nombre": "Cochabamba" }
+  "name": "Sacaba",
+  "province": { "id": 20, "name": "Chapare" },
+  "department": { "id": 2, "name": "Cochabamba" }
 }
 ```
 
-### 2. `POST /proyectos` (400: usuarioId desde el cliente)
+### 2. `POST /projects` (400: userId desde el cliente)
 
 ```json
 {
-  "nombre": "Suplantacion",
-  "nroContrato": "AEV-FAKE-001",
-  "entidadPublicaId": {{entidadId}},
-  "municipioId": {{municipioId}},
-  "usuarioId": "00000000-0000-4000-8000-000000000000"
+  "name": "Suplantacion",
+  "contractNo": "AEV-FAKE-001",
+  "publicEntityId": {{publicEntityId}},
+  "municipalityId": {{municipalityId}},
+  "userId": "00000000-0000-4000-8000-000000000000"
 }
 ```
 
 **Espera 400.** El creador se toma del token; intentar fijarlo desde el cliente
 se rechaza en vez de ignorarse en silencio.
 
-### 3. `POST /proyectos` (404: entidad inexistente)
+### 3. `POST /projects` (404: entidad inexistente)
 
 ```json
 {
-  "nombre": "Sin financiador",
-  "nroContrato": "AEV-NOENT-001",
-  "entidadPublicaId": 999999,
-  "municipioId": {{municipioId}}
+  "name": "Sin financiador",
+  "contractNo": "AEV-NOENT-001",
+  "publicEntityId": 999999,
+  "municipalityId": {{municipalityId}}
 }
 ```
 
 **Espera 404.**
 
-### 4. `POST /proyectos` (404: municipio inexistente)
+### 4. `POST /projects` (404: municipio inexistente)
 
 ```json
 {
-  "nombre": "Sin ubicacion",
-  "nroContrato": "AEV-NOMUN-001",
-  "entidadPublicaId": {{entidadId}},
-  "municipioId": 999999
+  "name": "Sin ubicacion",
+  "contractNo": "AEV-NOMUN-001",
+  "publicEntityId": {{publicEntityId}},
+  "municipalityId": 999999
 }
 ```
 
 **Espera 404**, con `Municipio 999999 not found` en el mensaje.
 
-### 5. `POST /proyectos` (409: contrato duplicado)
+### 5. `POST /projects` (409: contrato duplicado)
 
 ```json
 {
-  "nombre": "Contrato repetido",
-  "nroContrato": "{{nroContrato}}",
-  "entidadPublicaId": {{entidadId}},
-  "municipioId": {{municipioId}}
+  "name": "Contrato repetido",
+  "contractNo": "{{contractNo}}",
+  "publicEntityId": {{publicEntityId}},
+  "municipalityId": {{municipalityId}}
 }
 ```
 
-Reutiliza el `nroContrato` que guardó la petición 1. **Espera 409.**
+Reutiliza el `contractNo` que guardó la petición 1. **Espera 409.**
 
-### 6. `POST /proyectos` (401: sin sesión)
+### 6. `POST /projects` (401: sin sesión)
 
 Igual que la 1, pero con auth `noauth`. **Espera 401.**
 
-### 7. `GET /proyectos`
+### 7. `GET /projects`
 
-`{{baseUrl}}/proyectos?page=1&limit=20`
+`{{baseUrl}}/projects?page=1&limit=20`
 
 Filtros disponibles:
 
@@ -183,49 +183,49 @@ Filtros disponibles:
 | ------------------ | ------------------------------------ | -------------------------------- |
 | `page`             | entero ≥ 1                           | `1`                              |
 | `limit`            | 1–100                                | `20`                             |
-| `sortBy`           | `nombre`, `nroContrato`, `createdAt` | `createdAt`                      |
+| `sortBy`           | `name`, `contractNo`, `createdAt` | `createdAt`                      |
 | `sortOrder`        | `asc`, `desc`                        | `desc`                           |
 | `search`           | busca en nombre y nro de contrato    | `viviendas`                      |
-| `entidadPublicaId` | 1–9                                  | `2` (La Paz)                     |
-| `municipioId`      | id del catálogo geográfico           | `{{municipioId}}`                |
-| `usuarioId`        | UUID                                 | `{{userId}}`                     |
+| `publicEntityId` | 1–9                                  | `2` (La Paz)                     |
+| `municipalityId`      | id del catálogo geográfico           | `{{municipalityId}}`                |
+| `userId`        | UUID                                 | `{{userId}}`                     |
 
 **Espera 200** con envelope paginado (`meta.totalPages`).
 
-### 8. `GET /proyectos?usuarioId={{userId}}` — trazabilidad
+### 8. `GET /projects?userId={{userId}}` — trazabilidad
 
 Comprueba que todos los resultados pertenecen al creador pedido. **Espera 200.**
 
-### 9. `GET /proyectos?municipioId={{municipioId}}` — ubicación
+### 9. `GET /projects?municipalityId={{municipalityId}}` — ubicación
 
 Comprueba que todos los resultados están en el municipio pedido. **Espera 200.**
 
-### 10. `GET /proyectos/:id`
+### 10. `GET /projects/:id`
 
-`{{baseUrl}}/proyectos/{{proyectoId}}`. **Espera 200.**
+`{{baseUrl}}/projects/{{projectId}}`. **Espera 200.**
 Con un UUID inexistente, 404. Con algo que no sea UUID (`abc`), 400.
 
-### 11. `PUT /proyectos/:id`
+### 11. `PUT /projects/:id`
 
 ```json
 {
-  "nombre": "Construccion de viviendas sociales - Fase II"
+  "name": "Construccion de viviendas sociales - Fase II"
 }
 ```
 
-Campos editables: `nombre`, `nroContrato`, `entidadPublicaId`, `municipioId`.
-**Espera 200**, y que `usuarioId` siga siendo el mismo. Si mandas un
-`municipioId` inexistente, 404.
+Campos editables: `name`, `contractNo`, `publicEntityId`, `municipalityId`.
+**Espera 200**, y que `userId` siga siendo el mismo. Si mandas un
+`municipalityId` inexistente, 404.
 
-### 12. `PUT /proyectos/:id` (400: cambiar el creador)
+### 12. `PUT /projects/:id` (400: cambiar el creador)
 
 ```json
-{ "usuarioId": "00000000-0000-4000-8000-000000000000" }
+{ "userId": "00000000-0000-4000-8000-000000000000" }
 ```
 
 **Espera 400.** El creador es dato de auditoría, no se edita.
 
-### 13. `DELETE /proyectos/:id`
+### 13. `DELETE /projects/:id`
 
 **Espera 404.** No existe endpoint de borrado (fuera de alcance en PV-21).
 
@@ -239,14 +239,14 @@ No hay peticiones dedicadas: se prueba cambiando de sesión.
    { "email": "social_lead@pentaclan.com", "password": "Test1234!" }
    ```
 
-2. Reejecutar la carpeta Proyectos. Debe dar:
+2. Reejecutar la carpeta Projects. Debe dar:
 
    | Petición                | Código |
    | ----------------------- | ------ |
-   | `POST /proyectos`       | 403    |
-   | `PUT /proyectos/:id`    | 403    |
-   | `GET /proyectos`        | 200    |
-   | `GET /proyectos/:id`    | 200    |
+   | `POST /projects`       | 403    |
+   | `PUT /projects/:id`    | 403    |
+   | `GET /projects`        | 200    |
+   | `GET /projects/:id`    | 200    |
 
 3. Repetir con `project_supervisor@pentaclan.com` (mismo resultado) y con
    `technical_lead@pentaclan.com` (debe poder crear: 201).
@@ -257,9 +257,9 @@ No hay peticiones dedicadas: se prueba cambiando de sesión.
 
 | Síntoma                                            | Causa                                                                 |
 | -------------------------------------------------- | --------------------------------------------------------------------- |
-| `404 Route not found: POST /proyectos`             | El servidor corre con código viejo. Mira el `uptime` de `GET /health`: si es grande, es un proceso zombi ocupando el 3000. |
+| `404 Route not found: POST /projects`             | El servidor corre con código viejo. Mira el `uptime` de `GET /health`: si es grande, es un proceso zombi ocupando el 3000. |
 | `401` en todo                                       | `accessToken` vacío: ejecuta primero `Auth > POST /auth/login`.       |
-| `400` en `entidadPublicaId`                        | `{{entidadId}}` vacío: ejecuta antes `Entidades publicas > GET /entidades`. |
-| `400` en `municipioId`                             | `{{municipioId}}` vacío: ejecuta antes `Geografia > GET /provincias/:id/municipios`. |
-| `409` al reejecutar el POST                        | Falta `{{$randomInt}}` en el `nroContrato`, o lo fijaste a un valor ya usado. |
+| `400` en `publicEntityId`                        | `{{publicEntityId}}` vacío: ejecuta antes `Public entities > GET /public-entities`. |
+| `400` en `municipalityId`                             | `{{municipalityId}}` vacío: ejecuta antes `Geography > GET /provinces/:id/municipalities`. |
+| `409` al reejecutar el POST                        | Falta `{{$randomInt}}` en el `contractNo`, o lo fijaste a un valor ya usado. |
 | `403` con el admin                                  | Sesión iniciada con otro rol. Revisa `currentRole` en el environment. |
