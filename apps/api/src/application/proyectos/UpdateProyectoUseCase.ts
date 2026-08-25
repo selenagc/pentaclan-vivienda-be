@@ -1,6 +1,7 @@
 import type { Proyecto } from '../../domain/entities/Proyecto.js';
 import type { ProyectoRepository } from '../../domain/repositories/ProyectoRepository.js';
 import type { EntidadPublicaRepository } from '../../domain/repositories/EntidadPublicaRepository.js';
+import type { GeografiaRepository } from '../../domain/repositories/GeografiaRepository.js';
 import { ConflictError } from '../../shared/errors/ConflictError.js';
 import { NotFoundError } from '../../shared/errors/NotFoundError.js';
 
@@ -9,12 +10,14 @@ export interface UpdateProyectoDto {
   nombre?: string;
   nroContrato?: string;
   entidadPublicaId?: number;
+  municipioId?: number;
 }
 
 export class UpdateProyectoUseCase {
   constructor(
     private readonly proyectos: ProyectoRepository,
     private readonly entidades: EntidadPublicaRepository,
+    private readonly geografia: GeografiaRepository,
   ) {}
 
   async execute(id: string, dto: UpdateProyectoDto): Promise<Proyecto> {
@@ -24,6 +27,11 @@ export class UpdateProyectoUseCase {
     if (dto.entidadPublicaId !== undefined) {
       const entidad = await this.entidades.findById(dto.entidadPublicaId);
       if (!entidad) throw new NotFoundError(`Entidad publica ${dto.entidadPublicaId} not found`);
+    }
+
+    if (dto.municipioId !== undefined) {
+      const municipioExiste = await this.geografia.municipioExists(dto.municipioId);
+      if (!municipioExiste) throw new NotFoundError(`Municipio ${dto.municipioId} not found`);
     }
 
     // Solo es conflicto si el contrato pertenece a OTRO proyecto: reenviar el

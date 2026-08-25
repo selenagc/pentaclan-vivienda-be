@@ -7,6 +7,7 @@ export interface ListProyectosDto {
   sort: SortRequest;
   search?: string;
   entidadPublicaId?: number;
+  municipioId?: number;
   usuarioId?: string;
 }
 

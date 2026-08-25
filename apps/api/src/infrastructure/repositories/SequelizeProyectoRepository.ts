@@ -15,20 +15,55 @@ const SORTABLE_FIELDS_MAP: Record<string, string> = {
   createdAt: 'created_at',
 };
 
-const INCLUDE_USUARIO: Includeable[] = [{ association: 'usuario', attributes: ['name'] }];
+/**
+ * La ubicacion se arrastra hasta el departamento: la FK del proyecto llega solo
+ * al municipio, el resto de la cadena sale de la jerarquia del catalogo.
+ */
+const INCLUDE_RELACIONES: Includeable[] = [
+  { association: 'usuario', attributes: ['name'] },
+  { association: 'entidadPublica', attributes: ['id', 'nombre'] },
+  {
+    association: 'municipio',
+    attributes: ['id', 'nombre'],
+    include: [
+      {
+        association: 'provincia',
+        attributes: ['id', 'nombre'],
+        include: [{ association: 'departamento', attributes: ['id', 'nombre'] }],
+      },
+    ],
+  },
+];
 
 function toEntity(model: ProyectoModel): Proyecto {
   const usuario = model.usuario;
+  const entidadPublica = model.entidadPublica;
+  const municipio = model.municipio;
+  const provincia = municipio?.provincia;
+  const departamento = provincia?.departamento;
+
+  // Falla ruidosamente en desarrollo en vez de devolver datos vacios.
   if (!usuario) {
-    // Falla ruidosamente en desarrollo en vez de devolver un nombre vacio.
     throw new Error('SequelizeProyectoRepository: falta el include de `usuario`');
+  }
+  if (!entidadPublica) {
+    throw new Error('SequelizeProyectoRepository: falta el include de `entidadPublica`');
+  }
+  if (!municipio || !provincia || !departamento) {
+    throw new Error('SequelizeProyectoRepository: falta el include de `municipio`');
   }
 
   return {
     id: model.id,
     nombre: model.nombre,
     nroContrato: model.nroContrato,
-    entidadPublicaId: model.entidadPublicaId,
+    entidadPublica: { id: entidadPublica.id, nombre: entidadPublica.nombre },
+    municipio: {
+      id: municipio.id,
+      nombre: municipio.nombre,
+      provincia: { id: provincia.id, nombre: provincia.nombre },
+      departamento: { id: departamento.id, nombre: departamento.nombre },
+    },
     usuarioNombre: usuario.name,
     createdAt: model.createdAt,
     updatedAt: model.updatedAt,
@@ -38,19 +73,19 @@ function toEntity(model: ProyectoModel): Proyecto {
 export class SequelizeProyectoRepository implements ProyectoRepository {
   async create(input: CreateProyectoInput): Promise<Proyecto> {
     const created = await ProyectoModel.create(input);
-    await created.reload({ include: INCLUDE_USUARIO });
+    await created.reload({ include: INCLUDE_RELACIONES });
     return toEntity(created);
   }
 
   async findById(id: string): Promise<Proyecto | null> {
-    const found = await ProyectoModel.findByPk(id, { include: INCLUDE_USUARIO });
+    const found = await ProyectoModel.findByPk(id, { include: INCLUDE_RELACIONES });
     return found ? toEntity(found) : null;
   }
 
   async findByNroContrato(nroContrato: string): Promise<Proyecto | null> {
     const found = await ProyectoModel.findOne({
       where: { nroContrato },
-      include: INCLUDE_USUARIO,
+      include: INCLUDE_RELACIONES,
     });
     return found ? toEntity(found) : null;
   }
@@ -60,7 +95,7 @@ export class SequelizeProyectoRepository implements ProyectoRepository {
     if (!found) return null;
 
     await found.update(input);
-    await found.reload({ include: INCLUDE_USUARIO });
+    await found.reload({ include: INCLUDE_RELACIONES });
     return toEntity(found);
   }
 
@@ -69,6 +104,9 @@ export class SequelizeProyectoRepository implements ProyectoRepository {
 
     if (query.entidadPublicaId !== undefined) {
       conditions.push({ entidadPublicaId: query.entidadPublicaId });
+    }
+    if (query.municipioId !== undefined) {
+      conditions.push({ municipioId: query.municipioId });
     }
     if (query.usuarioId) {
       conditions.push({ usuarioId: query.usuarioId });
@@ -89,7 +127,7 @@ export class SequelizeProyectoRepository implements ProyectoRepository {
 
     const { rows, count } = await ProyectoModel.findAndCountAll({
       where,
-      include: INCLUDE_USUARIO,
+      include: INCLUDE_RELACIONES,
       limit: query.pagination.limit,
       offset: query.pagination.offset,
       order,

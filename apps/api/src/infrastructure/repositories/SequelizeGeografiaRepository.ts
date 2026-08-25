@@ -47,4 +47,8 @@ export class SequelizeGeografiaRepository implements GeografiaRepository {
     });
     return rows.map(toMunicipio);
   }
+
+  async municipioExists(id: number): Promise<boolean> {
+    return (await MunicipioModel.count({ where: { id } })) > 0;
+  }
 }

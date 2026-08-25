@@ -5,6 +5,7 @@ export interface CreateProyectoInput {
   nombre: string;
   nroContrato: string;
   entidadPublicaId: number;
+  municipioId: number;
   usuarioId: string;
 }
 
@@ -16,6 +17,7 @@ export interface ListProyectosQuery {
   sort: SortRequest;
   search?: string;
   entidadPublicaId?: number;
+  municipioId?: number;
   usuarioId?: string;
 }
 

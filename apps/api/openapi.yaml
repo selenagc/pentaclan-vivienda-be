@@ -277,6 +277,10 @@ paths:
           name: entidadPublicaId
           schema: { type: integer, minimum: 1 }
         - in: query
+          name: municipioId
+          description: Filtra los proyectos por el municipio donde se ejecutan
+          schema: { type: integer, minimum: 1 }
+        - in: query
           name: usuarioId
           schema: { type: string, format: uuid }
       responses:
@@ -615,25 +619,56 @@ components:
         password: { type: string, minLength: 8, maxLength: 128 }
     Proyecto:
       type: object
-      required: [id, nombre, nroContrato, entidadPublicaId, usuarioNombre]
+      required: [id, nombre, nroContrato, entidadPublica, municipio, usuarioNombre]
       properties:
         id: { type: string, format: uuid }
         nombre: { type: string, example: Construccion de viviendas sociales - Fase I }
         nroContrato: { type: string, example: AEV-2026-0042 }
-        entidadPublicaId: { type: integer, example: 2 }
+        # Entidad financiadora. Se devuelve anidada (id + nombre) para que el
+        # listado no tenga que resolver el catalogo aparte.
+        entidadPublica: { $ref: '#/components/schemas/ProyectoEntidadPublica' }
+        # Ubicacion del proyecto. La FK llega solo al municipio; provincia y
+        # departamento salen de la jerarquia del catalogo geografico.
+        municipio: { $ref: '#/components/schemas/ProyectoMunicipio' }
         # Nombre del usuario que registro el proyecto. Se toma de la sesion y no
         # es editable. El id del creador no se expone: para filtrar por el se usa
         # el query param `usuarioId` de GET /proyectos.
         usuarioNombre: { type: string, example: Selena Gutierrez }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    ProyectoEntidadPublica:
+      type: object
+      required: [id, nombre]
+      properties:
+        id: { type: integer, example: 2 }
+        nombre: { type: string, example: Agencia Estatal de Vivienda }
+    ProyectoMunicipio:
+      type: object
+      required: [id, nombre, provincia, departamento]
+      properties:
+        id: { type: integer, example: 100 }
+        nombre: { type: string, example: Sacaba }
+        provincia:
+          type: object
+          required: [id, nombre]
+          properties:
+            id: { type: integer, example: 20 }
+            nombre: { type: string, example: Chapare }
+        departamento:
+          type: object
+          required: [id, nombre]
+          properties:
+            id: { type: integer, example: 2 }
+            nombre: { type: string, example: Cochabamba }
     CreateProyecto:
       type: object
-      required: [nombre, nroContrato, entidadPublicaId]
+      required: [nombre, nroContrato, entidadPublicaId, municipioId]
       properties:
         nombre: { type: string, maxLength: 200 }
         nroContrato: { type: string, maxLength: 50 }
         entidadPublicaId: { type: integer, minimum: 1 }
+        # Id del municipio del catalogo geografico (GET /provincias/{id}/municipios)
+        municipioId: { type: integer, minimum: 1 }
     UpdateProyecto:
       type: object
       minProperties: 1
@@ -641,6 +676,7 @@ components:
         nombre: { type: string, maxLength: 200 }
         nroContrato: { type: string, maxLength: 50 }
         entidadPublicaId: { type: integer, minimum: 1 }
+        municipioId: { type: integer, minimum: 1 }
 
 
   responses:

@@ -4,7 +4,11 @@ import { ListProyectosUseCase } from '../../src/application/proyectos/ListProyec
 import { UpdateProyectoUseCase } from '../../src/application/proyectos/UpdateProyectoUseCase.js';
 import { ConflictError } from '../../src/shared/errors/ConflictError.js';
 import { NotFoundError } from '../../src/shared/errors/NotFoundError.js';
-import type { Proyecto } from '../../src/domain/entities/Proyecto.js';
+import type {
+  Proyecto,
+  ProyectoEntidadPublica,
+  ProyectoMunicipio,
+} from '../../src/domain/entities/Proyecto.js';
 import type {
   CreateProyectoInput,
   ListProyectosQuery,
@@ -14,6 +18,10 @@ import type {
 import type { PageResult } from '../../src/domain/types/Pagination.js';
 import type { EntidadPublica } from '../../src/domain/entities/EntidadPublica.js';
 import type { EntidadPublicaRepository } from '../../src/domain/repositories/EntidadPublicaRepository.js';
+import type { Departamento } from '../../src/domain/entities/Departamento.js';
+import type { Provincia } from '../../src/domain/entities/Provincia.js';
+import type { Municipio } from '../../src/domain/entities/Municipio.js';
+import type { GeografiaRepository } from '../../src/domain/repositories/GeografiaRepository.js';
 
 const ADMIN_ID = '11111111-1111-4111-8111-111111111111';
 const TECH_ID = '22222222-2222-4222-8222-222222222222';
@@ -21,6 +29,29 @@ const TECH_ID = '22222222-2222-4222-8222-222222222222';
 const NOMBRES: Record<string, string> = {
   [ADMIN_ID]: 'Admin Pentaclan',
   [TECH_ID]: 'Tecnico Pentaclan',
+};
+
+/** Catalogo geografico minimo compartido por el repo y el stub de geografia. */
+const MUNICIPIOS: Record<number, ProyectoMunicipio> = {
+  100: {
+    id: 100,
+    nombre: 'El Alto',
+    provincia: { id: 10, nombre: 'Murillo' },
+    departamento: { id: 1, nombre: 'La Paz' },
+  },
+  200: {
+    id: 200,
+    nombre: 'Sacaba',
+    provincia: { id: 20, nombre: 'Chapare' },
+    departamento: { id: 2, nombre: 'Cochabamba' },
+  },
+};
+
+/** Catalogo minimo de entidades publicas, alineado con el stub del repo. */
+const ENTIDADES: Record<number, ProyectoEntidadPublica> = {
+  1: { id: 1, nombre: 'Agencia Estatal de Vivienda' },
+  2: { id: 2, nombre: 'Agencia Estatal de Vivienda' },
+  3: { id: 3, nombre: 'Agencia Estatal de Vivienda' },
 };
 
 class InMemoryProyectoRepository implements ProyectoRepository {
@@ -31,10 +62,12 @@ class InMemoryProyectoRepository implements ProyectoRepository {
   async create(input: CreateProyectoInput): Promise<Proyecto> {
     this.seq += 1;
     const now = new Date();
-    const { usuarioId, ...resto } = input;
+    const { usuarioId, municipioId, entidadPublicaId, ...resto } = input;
     const proyecto: Proyecto = {
       id: `p-${this.seq}`,
       ...resto,
+      entidadPublica: ENTIDADES[entidadPublicaId],
+      municipio: MUNICIPIOS[municipioId],
       usuarioNombre: NOMBRES[usuarioId] ?? 'Desconocido',
       createdAt: now,
       updatedAt: now,
@@ -55,7 +88,14 @@ class InMemoryProyectoRepository implements ProyectoRepository {
   async update(id: string, input: UpdateProyectoInput): Promise<Proyecto | null> {
     const proyecto = this.proyectos.find((p) => p.id === id);
     if (!proyecto) return null;
-    Object.assign(proyecto, input, { updatedAt: new Date() });
+
+    // `municipioId` / `entidadPublicaId` son columnas, no campos de la entidad:
+    // se traducen a sus objetos anidados.
+    const { municipioId, entidadPublicaId, ...resto } = input;
+    Object.assign(proyecto, resto, { updatedAt: new Date() });
+    if (municipioId !== undefined) proyecto.municipio = MUNICIPIOS[municipioId];
+    if (entidadPublicaId !== undefined) proyecto.entidadPublica = ENTIDADES[entidadPublicaId];
+
     return proyecto;
   }
 
@@ -65,7 +105,10 @@ class InMemoryProyectoRepository implements ProyectoRepository {
       data = data.filter((p) => this.creadorPorProyecto.get(p.id) === query.usuarioId);
     }
     if (query.entidadPublicaId !== undefined) {
-      data = data.filter((p) => p.entidadPublicaId === query.entidadPublicaId);
+      data = data.filter((p) => p.entidadPublica.id === query.entidadPublicaId);
+    }
+    if (query.municipioId !== undefined) {
+      data = data.filter((p) => p.municipio.id === query.municipioId);
     }
     return { data, total: data.length };
   }
@@ -94,9 +137,37 @@ class StubEntidadPublicaRepository implements EntidadPublicaRepository {
 
 }
 
+/** Solo se usa `municipioExists`; el resto satisface la interfaz. */
+class StubGeografiaRepository implements GeografiaRepository {
+  async listDepartamentos(): Promise<Departamento[]> {
+    return [];
+  }
+
+  async departamentoExists(): Promise<boolean> {
+    return false;
+  }
+
+  async listProvinciasByDepartamento(): Promise<Provincia[]> {
+    return [];
+  }
+
+  async provinciaExists(): Promise<boolean> {
+    return false;
+  }
+
+  async listMunicipiosByProvincia(): Promise<Municipio[]> {
+    return [];
+  }
+
+  async municipioExists(id: number): Promise<boolean> {
+    return id in MUNICIPIOS;
+  }
+}
+
 describe('Proyecto use cases', () => {
   let repo: InMemoryProyectoRepository;
   let entidades: StubEntidadPublicaRepository;
+  let geografia: StubGeografiaRepository;
   let create: CreateProyectoUseCase;
   let update: UpdateProyectoUseCase;
 
@@ -104,20 +175,34 @@ describe('Proyecto use cases', () => {
     nombre: 'Viviendas sociales - Fase I',
     nroContrato: 'AEV-2026-0042',
     entidadPublicaId: 2,
+    municipioId: 100,
     usuarioId: ADMIN_ID,
   };
 
   beforeEach(() => {
     repo = new InMemoryProyectoRepository();
     entidades = new StubEntidadPublicaRepository();
-    create = new CreateProyectoUseCase(repo, entidades);
-    update = new UpdateProyectoUseCase(repo, entidades);
+    geografia = new StubGeografiaRepository();
+    create = new CreateProyectoUseCase(repo, entidades, geografia);
+    update = new UpdateProyectoUseCase(repo, entidades, geografia);
   });
 
   it('registra el proyecto con el usuario recibido de la sesion', async () => {
     const proyecto = await create.execute(baseDto);
     expect(proyecto.usuarioNombre).toBe(NOMBRES[ADMIN_ID]);
-    expect(proyecto.entidadPublicaId).toBe(2);
+    expect(proyecto.entidadPublica).toEqual({ id: 2, nombre: 'Agencia Estatal de Vivienda' });
+  });
+
+  it('devuelve la ubicacion resuelta hasta el departamento', async () => {
+    const proyecto = await create.execute(baseDto);
+    expect(proyecto.municipio).toEqual(MUNICIPIOS[100]);
+  });
+
+  it('falla con 404 si el municipio no existe', async () => {
+    await expect(create.execute({ ...baseDto, municipioId: 999 })).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    expect(repo.proyectos).toHaveLength(0);
   });
 
   it('falla con 404 si la entidad financiadora no existe', async () => {
@@ -151,7 +236,7 @@ describe('Proyecto use cases', () => {
     const creado = await create.execute(baseDto);
     const result = await update.execute(creado.id, { nombre: 'Nombre nuevo', entidadPublicaId: 3 });
     expect(result.nombre).toBe('Nombre nuevo');
-    expect(result.entidadPublicaId).toBe(3);
+    expect(result.entidadPublica.id).toBe(3);
   });
 
   it('no cambia el creador al actualizar', async () => {
@@ -182,6 +267,20 @@ describe('Proyecto use cases', () => {
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
+  it('permite corregir el municipio del proyecto', async () => {
+    const creado = await create.execute(baseDto);
+    const result = await update.execute(creado.id, { municipioId: 200 });
+    expect(result.municipio).toEqual(MUNICIPIOS[200]);
+  });
+
+  it('falla con 404 si el update apunta a un municipio inexistente', async () => {
+    const creado = await create.execute(baseDto);
+    await expect(update.execute(creado.id, { municipioId: 999 })).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    expect(repo.proyectos[0].municipio).toEqual(MUNICIPIOS[100]);
+  });
+
   it('filtra el listado por usuario creador', async () => {
     await create.execute(baseDto);
     await create.execute({ ...baseDto, nroContrato: 'AEV-2026-0043', usuarioId: TECH_ID });
@@ -194,5 +293,19 @@ describe('Proyecto use cases', () => {
 
     expect(result.total).toBe(1);
     expect(result.data[0].usuarioNombre).toBe(NOMBRES[TECH_ID]);
+  });
+
+  it('filtra el listado por municipio', async () => {
+    await create.execute(baseDto);
+    await create.execute({ ...baseDto, nroContrato: 'AEV-2026-0043', municipioId: 200 });
+
+    const result = await new ListProyectosUseCase(repo).execute({
+      pagination: { page: 1, limit: 20, offset: 0 },
+      sort: { sortBy: 'createdAt', sortOrder: 'desc' },
+      municipioId: 200,
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.data[0].municipio.nombre).toBe('Sacaba');
   });
 });

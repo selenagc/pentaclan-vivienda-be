@@ -44,6 +44,10 @@ class InMemoryGeografiaRepository implements GeografiaRepository {
   async listMunicipiosByProvincia(provinciaId: number): Promise<Municipio[]> {
     return this.municipios.filter((m) => m.provinciaId === provinciaId);
   }
+
+  async municipioExists(id: number): Promise<boolean> {
+    return this.municipios.some((m) => m.id === id);
+  }
 }
 
 describe('Geografia use cases', () => {

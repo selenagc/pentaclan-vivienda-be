@@ -25,6 +25,7 @@ Todo lo demás se rellena solo al ejecutar las peticiones en orden.
 | `newUserId`      | `Users > POST /users`             | UUID                                   |
 | `departamentoId` | `Geografia > GET /departamentos`  | `5`                                    |
 | `provinciaId`    | `Geografia > GET .../provincias`  | id de la primera provincia             |
+| `municipioId`    | `Geografia > GET .../municipios`  | id del primer municipio                |
 | `entidadId`      | `Entidades publicas > GET /entidades` | `1`                                |
 | `proyectoId`     | `Proyectos > POST /proyectos`     | UUID                                   |
 | `nroContrato`    | `Proyectos > POST /proyectos`     | `AEV-2026-XXXX`                        |
@@ -76,9 +77,10 @@ La colección está ordenada para correrse de arriba abajo con el Runner:
 Health → Auth → Users → Geografia → Entidades publicas → Proyectos
 ```
 
-**Proyectos va al final a propósito**: necesita `entidadId`, que lo rellena la
-carpeta de Entidades públicas. Si ejecutas Proyectos suelto sin haber pasado por
-ahí, el `POST` fallará porque `{{entidadId}}` llegará vacío.
+**Proyectos va al final a propósito**: necesita `entidadId` y `municipioId`, que
+los rellenan las carpetas de Entidades públicas y Geografía. Si ejecutas
+Proyectos suelto sin haber pasado por ahí, el `POST` fallará porque
+`{{entidadId}}` o `{{municipioId}}` llegarán vacíos.
 
 ## Peticiones de la carpeta Proyectos
 
@@ -88,7 +90,8 @@ ahí, el `POST` fallará porque `{{entidadId}}` llegará vacío.
 {
   "nombre": "Construccion de viviendas sociales - Fase I",
   "nroContrato": "AEV-2026-{{$randomInt}}",
-  "entidadPublicaId": {{entidadId}}
+  "entidadPublicaId": {{entidadId}},
+  "municipioId": {{municipioId}}
 }
 ```
 
@@ -96,7 +99,21 @@ ahí, el `POST` fallará porque `{{entidadId}}` llegará vacío.
 porque `nro_contrato` es único.
 
 **Espera 201.** Verifica que `usuarioId` coincide con el `userId` de la sesión
-(nunca se envía en el body) y que `entidadPublicaId` es el que mandaste.
+(nunca se envía en el body) y que `entidadPublica.id` es el que mandaste. La
+respuesta trae la entidad y la ubicación ya resueltas:
+
+```json
+"entidadPublica": {
+  "id": 2,
+  "nombre": "Agencia Estatal de Vivienda"
+},
+"municipio": {
+  "id": 100,
+  "nombre": "Sacaba",
+  "provincia": { "id": 20, "nombre": "Chapare" },
+  "departamento": { "id": 2, "nombre": "Cochabamba" }
+}
+```
 
 ### 2. `POST /proyectos` (400: usuarioId desde el cliente)
 
@@ -105,6 +122,7 @@ porque `nro_contrato` es único.
   "nombre": "Suplantacion",
   "nroContrato": "AEV-FAKE-001",
   "entidadPublicaId": {{entidadId}},
+  "municipioId": {{municipioId}},
   "usuarioId": "00000000-0000-4000-8000-000000000000"
 }
 ```
@@ -118,29 +136,44 @@ se rechaza en vez de ignorarse en silencio.
 {
   "nombre": "Sin financiador",
   "nroContrato": "AEV-NOENT-001",
-  "entidadPublicaId": 999999
+  "entidadPublicaId": 999999,
+  "municipioId": {{municipioId}}
 }
 ```
 
 **Espera 404.**
 
-### 4. `POST /proyectos` (409: contrato duplicado)
+### 4. `POST /proyectos` (404: municipio inexistente)
+
+```json
+{
+  "nombre": "Sin ubicacion",
+  "nroContrato": "AEV-NOMUN-001",
+  "entidadPublicaId": {{entidadId}},
+  "municipioId": 999999
+}
+```
+
+**Espera 404**, con `Municipio 999999 not found` en el mensaje.
+
+### 5. `POST /proyectos` (409: contrato duplicado)
 
 ```json
 {
   "nombre": "Contrato repetido",
   "nroContrato": "{{nroContrato}}",
-  "entidadPublicaId": {{entidadId}}
+  "entidadPublicaId": {{entidadId}},
+  "municipioId": {{municipioId}}
 }
 ```
 
 Reutiliza el `nroContrato` que guardó la petición 1. **Espera 409.**
 
-### 5. `POST /proyectos` (401: sin sesión)
+### 6. `POST /proyectos` (401: sin sesión)
 
 Igual que la 1, pero con auth `noauth`. **Espera 401.**
 
-### 6. `GET /proyectos`
+### 7. `GET /proyectos`
 
 `{{baseUrl}}/proyectos?page=1&limit=20`
 
@@ -154,20 +187,25 @@ Filtros disponibles:
 | `sortOrder`        | `asc`, `desc`                        | `desc`                           |
 | `search`           | busca en nombre y nro de contrato    | `viviendas`                      |
 | `entidadPublicaId` | 1–9                                  | `2` (La Paz)                     |
+| `municipioId`      | id del catálogo geográfico           | `{{municipioId}}`                |
 | `usuarioId`        | UUID                                 | `{{userId}}`                     |
 
 **Espera 200** con envelope paginado (`meta.totalPages`).
 
-### 7. `GET /proyectos?usuarioId={{userId}}` — trazabilidad
+### 8. `GET /proyectos?usuarioId={{userId}}` — trazabilidad
 
 Comprueba que todos los resultados pertenecen al creador pedido. **Espera 200.**
 
-### 8. `GET /proyectos/:id`
+### 9. `GET /proyectos?municipioId={{municipioId}}` — ubicación
+
+Comprueba que todos los resultados están en el municipio pedido. **Espera 200.**
+
+### 10. `GET /proyectos/:id`
 
 `{{baseUrl}}/proyectos/{{proyectoId}}`. **Espera 200.**
 Con un UUID inexistente, 404. Con algo que no sea UUID (`abc`), 400.
 
-### 9. `PUT /proyectos/:id`
+### 11. `PUT /proyectos/:id`
 
 ```json
 {
@@ -175,10 +213,11 @@ Con un UUID inexistente, 404. Con algo que no sea UUID (`abc`), 400.
 }
 ```
 
-Campos editables: `nombre`, `nroContrato`, `entidadPublicaId`.
-**Espera 200**, y que `usuarioId` siga siendo el mismo.
+Campos editables: `nombre`, `nroContrato`, `entidadPublicaId`, `municipioId`.
+**Espera 200**, y que `usuarioId` siga siendo el mismo. Si mandas un
+`municipioId` inexistente, 404.
 
-### 10. `PUT /proyectos/:id` (400: cambiar el creador)
+### 12. `PUT /proyectos/:id` (400: cambiar el creador)
 
 ```json
 { "usuarioId": "00000000-0000-4000-8000-000000000000" }
@@ -186,7 +225,7 @@ Campos editables: `nombre`, `nroContrato`, `entidadPublicaId`.
 
 **Espera 400.** El creador es dato de auditoría, no se edita.
 
-### 11. `DELETE /proyectos/:id`
+### 13. `DELETE /proyectos/:id`
 
 **Espera 404.** No existe endpoint de borrado (fuera de alcance en PV-21).
 
@@ -221,5 +260,6 @@ No hay peticiones dedicadas: se prueba cambiando de sesión.
 | `404 Route not found: POST /proyectos`             | El servidor corre con código viejo. Mira el `uptime` de `GET /health`: si es grande, es un proceso zombi ocupando el 3000. |
 | `401` en todo                                       | `accessToken` vacío: ejecuta primero `Auth > POST /auth/login`.       |
 | `400` en `entidadPublicaId`                        | `{{entidadId}}` vacío: ejecuta antes `Entidades publicas > GET /entidades`. |
+| `400` en `municipioId`                             | `{{municipioId}}` vacío: ejecuta antes `Geografia > GET /provincias/:id/municipios`. |
 | `409` al reejecutar el POST                        | Falta `{{$randomInt}}` en el `nroContrato`, o lo fijaste a un valor ya usado. |
 | `403` con el admin                                  | Sesión iniciada con otro rol. Revisa `currentRole` en el environment. |

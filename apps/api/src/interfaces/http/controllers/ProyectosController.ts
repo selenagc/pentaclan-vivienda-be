@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { SequelizeProyectoRepository } from '../../../infrastructure/repositories/SequelizeProyectoRepository.js';
 import { SequelizeEntidadPublicaRepository } from '../../../infrastructure/repositories/SequelizeEntidadPublicaRepository.js';
+import { SequelizeGeografiaRepository } from '../../../infrastructure/repositories/SequelizeGeografiaRepository.js';
 import { CreateProyectoUseCase } from '../../../application/proyectos/CreateProyectoUseCase.js';
 import { GetProyectoUseCase } from '../../../application/proyectos/GetProyectoUseCase.js';
 import { ListProyectosUseCase } from '../../../application/proyectos/ListProyectosUseCase.js';
@@ -11,10 +12,11 @@ import { UnauthorizedError } from '../../../shared/errors/UnauthorizedError.js';
 
 const repo = new SequelizeProyectoRepository();
 const entidadesRepo = new SequelizeEntidadPublicaRepository();
-const createUseCase = new CreateProyectoUseCase(repo, entidadesRepo);
+const geografiaRepo = new SequelizeGeografiaRepository();
+const createUseCase = new CreateProyectoUseCase(repo, entidadesRepo, geografiaRepo);
 const getUseCase = new GetProyectoUseCase(repo);
 const listUseCase = new ListProyectosUseCase(repo);
-const updateUseCase = new UpdateProyectoUseCase(repo, entidadesRepo);
+const updateUseCase = new UpdateProyectoUseCase(repo, entidadesRepo, geografiaRepo);
 
 export const index: RequestHandler = asyncHandler(async (req, res) => {
   const q = req.query as Record<string, string | undefined>;
@@ -30,6 +32,7 @@ export const index: RequestHandler = asyncHandler(async (req, res) => {
     },
     search: q.search,
     entidadPublicaId: q.entidadPublicaId ? Number(q.entidadPublicaId) : undefined,
+    municipioId: q.municipioId ? Number(q.municipioId) : undefined,
     usuarioId: q.usuarioId,
   });
 

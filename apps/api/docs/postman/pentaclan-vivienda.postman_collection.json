@@ -329,7 +329,10 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const res = pm.response.json();",
                   "const esperado = Number(pm.environment.get('provinciaId'));",
-                  "pm.test('solo municipios de la provincia pedida', () => pm.expect(res.data.every((m) => m.provinciaId === esperado)).to.be.true);"
+                  "pm.test('solo municipios de la provincia pedida', () => pm.expect(res.data.every((m) => m.provinciaId === esperado)).to.be.true);",
+                  "// Los proyectos se registran en un municipio: se guarda el primero",
+                  "// para que la carpeta Proyectos pueda usarlo con {{municipioId}}.",
+                  "if (res.data.length) pm.environment.set('municipioId', res.data[0].id);"
                 ]
               }
             }
@@ -488,7 +491,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Construccion de viviendas sociales - Fase I\",\n  \"nroContrato\": \"AEV-2026-{{$randomInt}}\",\n  \"entidadPublicaId\": {{entidadId}}\n}"
+              "raw": "{\n  \"nombre\": \"Construccion de viviendas sociales - Fase I\",\n  \"nroContrato\": \"AEV-2026-{{$randomInt}}\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}}\n}"
             },
             "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
           },
@@ -503,7 +506,9 @@
                   "pm.environment.set('proyectoId', res.data.id);",
                   "pm.environment.set('nroContrato', res.data.nroContrato);",
                   "pm.test('el creador sale de la sesion', () => pm.expect(res.data.usuarioNombre).to.eql(pm.environment.get('userName')));",
-                  "pm.test('asocia la entidad financiadora', () => pm.expect(res.data.entidadPublicaId).to.eql(Number(pm.environment.get('entidadId'))));"
+                  "pm.test('asocia la entidad financiadora', () => pm.expect(res.data.entidadPublica.id).to.eql(Number(pm.environment.get('entidadId'))));",
+                  "pm.test('registra el municipio', () => pm.expect(res.data.municipio.id).to.eql(Number(pm.environment.get('municipioId'))));",
+                  "pm.test('resuelve la cadena geografica', () => pm.expect(res.data.municipio.departamento).to.have.property('nombre'));"
                 ]
               }
             }
@@ -516,7 +521,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Suplantacion\",\n  \"nroContrato\": \"AEV-FAKE-001\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"usuarioId\": \"00000000-0000-4000-8000-000000000000\"\n}"
+              "raw": "{\n  \"nombre\": \"Suplantacion\",\n  \"nroContrato\": \"AEV-FAKE-001\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}},\n  \"usuarioId\": \"00000000-0000-4000-8000-000000000000\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
           },
@@ -540,7 +545,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Sin financiador\",\n  \"nroContrato\": \"AEV-NOENT-001\",\n  \"entidadPublicaId\": 999999\n}"
+              "raw": "{\n  \"nombre\": \"Sin financiador\",\n  \"nroContrato\": \"AEV-NOENT-001\",\n  \"entidadPublicaId\": 999999,\n  \"municipioId\": {{municipioId}}\n}"
             },
             "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
           },
@@ -557,13 +562,37 @@
           ]
         },
         {
+          "name": "POST /proyectos (404: municipio inexistente)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Sin ubicacion\",\n  \"nroContrato\": \"AEV-NOMUN-001\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": 999999\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('el motivo es el municipio', () => pm.expect(pm.response.text()).to.include('Municipio'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "POST /proyectos (409: nro de contrato duplicado)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Contrato repetido\",\n  \"nroContrato\": \"{{nroContrato}}\",\n  \"entidadPublicaId\": {{entidadId}}\n}"
+              "raw": "{\n  \"nombre\": \"Contrato repetido\",\n  \"nroContrato\": \"{{nroContrato}}\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}}\n}"
             },
             "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
           },
@@ -587,7 +616,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Sin sesion\",\n  \"nroContrato\": \"AEV-NOAUTH-001\",\n  \"entidadPublicaId\": 1\n}"
+              "raw": "{\n  \"nombre\": \"Sin sesion\",\n  \"nroContrato\": \"AEV-NOAUTH-001\",\n  \"entidadPublicaId\": 1,\n  \"municipioId\": 1\n}"
             },
             "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
           },
@@ -612,7 +641,7 @@
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Authorization", "value": "Bearer {{techToken}}" }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Rol sin permiso\",\n  \"nroContrato\": \"AEV-FORBIDDEN-001\",\n  \"entidadPublicaId\": {{entidadId}}\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Rol sin permiso\",\n  \"nroContrato\": \"AEV-FORBIDDEN-001\",\n  \"entidadPublicaId\": {{entidadId}},\n  \"municipioId\": {{municipioId}}\n}" },
             "url": { "raw": "{{baseUrl}}/proyectos", "host": ["{{baseUrl}}"], "path": ["proyectos"] }
           },
           "event": [
@@ -700,6 +729,33 @@
                   "// se filtra por el id del creador, pero la respuesta trae su nombre",
                   "const esperado = pm.environment.get('userName');",
                   "pm.test('solo proyectos del creador pedido', () => pm.expect(res.data.every((p) => p.usuarioNombre === esperado)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /proyectos?municipioId (ubicacion)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/proyectos?municipioId={{municipioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["proyectos"],
+              "query": [{ "key": "municipioId", "value": "{{municipioId}}" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const esperado = Number(pm.environment.get('municipioId'));",
+                  "pm.test('solo proyectos del municipio pedido', () => pm.expect(res.data.every((p) => p.municipio.id === esperado)).to.be.true);"
                 ]
               }
             }

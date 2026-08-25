@@ -12,4 +12,5 @@ export interface GeografiaRepository {
   listProvinciasByDepartamento(departamentoId: number): Promise<Provincia[]>;
   provinciaExists(id: number): Promise<boolean>;
   listMunicipiosByProvincia(provinciaId: number): Promise<Municipio[]>;
+  municipioExists(id: number): Promise<boolean>;
 }

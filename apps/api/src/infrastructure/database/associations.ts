@@ -49,6 +49,20 @@ ProyectoModel.belongsTo(EntidadPublicaModel, {
   as: 'entidadPublica',
 });
 
+// Ubicacion del proyecto: se resuelve hasta el departamento a traves de la
+// jerarquia del catalogo, por eso alcanza con la FK al municipio.
+MunicipioModel.hasMany(ProyectoModel, {
+  foreignKey: 'municipioId',
+  sourceKey: 'id',
+  as: 'proyectos',
+  onDelete: 'RESTRICT',
+});
+ProyectoModel.belongsTo(MunicipioModel, {
+  foreignKey: 'municipioId',
+  targetKey: 'id',
+  as: 'municipio',
+});
+
 UserModel.hasMany(ProyectoModel, {
   foreignKey: 'usuarioId',
   sourceKey: 'id',

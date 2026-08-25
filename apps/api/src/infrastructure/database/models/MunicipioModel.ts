@@ -1,5 +1,6 @@
-import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional } from 'sequelize';
+import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional, type NonAttribute } from 'sequelize';
 import { sequelize } from '../sequelize.js';
+import type { ProvinciaModel } from './ProvinciaModel.js';
 
 export class MunicipioModel extends Model<
   InferAttributes<MunicipioModel>,
@@ -8,6 +9,7 @@ export class MunicipioModel extends Model<
   declare id: CreationOptional<number>;
   declare nombre: string;
   declare provinciaId: number;
+  declare provincia?: NonAttribute<ProvinciaModel>;
 }
 
 MunicipioModel.init(

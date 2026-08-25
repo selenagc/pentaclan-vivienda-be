@@ -2,6 +2,7 @@ import Joi from 'joi';
 
 const uuid = Joi.string().uuid({ version: 'uuidv4' });
 const entidadPublicaId = Joi.number().integer().positive();
+const municipioId = Joi.number().integer().positive();
 
 /**
  * El creador se toma de la sesion. Se declaran como `forbidden()` (en vez de
@@ -23,6 +24,7 @@ export const createProyectoSchema = Joi.object({
   nombre: Joi.string().trim().min(1).max(200).required(),
   nroContrato: Joi.string().trim().min(1).max(50).required(),
   entidadPublicaId: entidadPublicaId.required(),
+  municipioId: municipioId.required(),
   ...camposDeAuditoria,
 });
 
@@ -30,6 +32,7 @@ export const updateProyectoSchema = Joi.object({
   nombre: Joi.string().trim().min(1).max(200),
   nroContrato: Joi.string().trim().min(1).max(50),
   entidadPublicaId,
+  municipioId,
   ...camposDeAuditoria,
 }).min(1);
 
@@ -40,5 +43,6 @@ export const listProyectosQuerySchema = Joi.object({
   sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
   search: Joi.string().trim().max(200),
   entidadPublicaId,
+  municipioId,
   usuarioId: uuid,
 });
