@@ -8,6 +8,7 @@ export class GetProjectUseCase {
   async execute(id: string): Promise<Project> {
     const project = await this.projects.findById(id);
     if (!project) throw new NotFoundError(`Project ${id} not found`);
+
     return project;
   }
 }

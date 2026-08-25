@@ -1,13 +1,8 @@
 import { Router } from 'express';
 import { authenticate } from '../middlewares/authenticate.js';
+import { authorize } from '../middlewares/authorize.js';
 import { validate } from '../middlewares/validate.js';
-import {
-  createProject,
-  deleteProject,
-  getProject,
-  listProjects,
-  updateProject,
-} from '../controllers/ProjectsController.js';
+import { index, store, show, update } from '../controllers/ProjectsController.js';
 import {
   createProjectSchema,
   listProjectsQuerySchema,
@@ -19,12 +14,16 @@ export const projectsRouter = Router();
 
 projectsRouter.use(authenticate);
 
-projectsRouter.post('/', validate({ body: createProjectSchema }), createProject);
-projectsRouter.get('/', validate({ query: listProjectsQuerySchema }), listProjects);
-projectsRouter.get('/:id', validate({ params: projectIdParamsSchema }), getProject);
+// Toda la escritura es exclusiva de admin; la lectura queda abierta a
+// cualquier usuario autenticado.
+const puedeEscribir = authorize('admin');
+
+projectsRouter.get('/', validate({ query: listProjectsQuerySchema }), index);
+projectsRouter.get('/:id', validate({ params: projectIdParamsSchema }), show);
+projectsRouter.post('/', puedeEscribir, validate({ body: createProjectSchema }), store);
 projectsRouter.put(
   '/:id',
+  puedeEscribir,
   validate({ params: projectIdParamsSchema, body: updateProjectSchema }),
-  updateProject,
+  update,
 );
-projectsRouter.delete('/:id', validate({ params: projectIdParamsSchema }), deleteProject);

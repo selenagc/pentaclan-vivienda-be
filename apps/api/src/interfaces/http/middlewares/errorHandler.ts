@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
-import { ValidationError as JoiValidationError } from 'joi';
+import Joi from 'joi';
 import { UniqueConstraintError, ValidationError as SequelizeValidationError } from 'sequelize';
 import { AppError } from '../../../shared/errors/AppError.js';
 import { fail } from '../../../shared/http/responses.js';
@@ -10,12 +10,19 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return fail(res, err.statusCode, err.code, err.message, err.details);
   }
 
-  if (err instanceof JoiValidationError) {
+  if (err instanceof Joi.ValidationError) {
     const details = err.details.map((d) => ({
       path: d.path.join('.'),
       message: d.message,
     }));
     return fail(res, 400, 'VALIDATION_ERROR', 'Invalid request data', details);
+  }
+
+  // body-parser: JSON mal formado. Trae `status` 400 propio, pero si no se
+  // atrapa aca cae al 500 generico y esconde el verdadero problema (tipico con
+  // una variable de Postman sin resolver en el body).
+  if (err instanceof SyntaxError && (err as { type?: string }).type === 'entity.parse.failed') {
+    return fail(res, 400, 'INVALID_JSON', 'Malformed JSON in request body');
   }
 
   if (err instanceof UniqueConstraintError) {

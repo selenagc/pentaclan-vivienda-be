@@ -1,0 +1,859 @@
+{
+  "info": {
+    "name": "Pentaclan Vivienda API",
+    "description": "Colección de la API de Pentaclan Vivienda.\n\nIncluye el flujo de autenticación (PV-10: roles admin / social_lead / technical_lead / project_supervisor) y el CRUD de proyectos.\n\nUso rápido:\n1. Selecciona el environment 'Pentaclan Vivienda - Local'.\n2. Ejecuta Auth > Login (guarda accessToken y currentRole automáticamente).\n3. El resto de requests usan {{accessToken}} vía Bearer heredado.\n\nNota: el login devuelve { data: { user, accessToken } } (sin envelope success ni refreshToken).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "pv-collection-0001-0001-0001-000000000001"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('envelope success', () => pm.expect(res.success).to.be.true);",
+                  "pm.test('status ok', () => pm.expect(res.data.status).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const VALID_ROLES = ['admin', 'social_lead', 'technical_lead', 'project_supervisor'];",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const payload = res.data;",
+                  "pm.test('accessToken present', () => pm.expect(payload.accessToken).to.be.a('string'));",
+                  "pm.test('PV-10: role is valid', () => pm.expect(VALID_ROLES).to.include(payload.user.role));",
+                  "pm.environment.set('accessToken', payload.accessToken);",
+                  "pm.environment.set('currentRole', payload.user.role);",
+                  "pm.environment.set('userId', payload.user.id);",
+                  "pm.environment.set('userName', payload.user.name);",
+                  "console.log('Logged in as', payload.user.email, '-> role:', payload.user.role);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /auth/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const VALID_ROLES = ['admin', 'social_lead', 'technical_lead', 'project_supervisor'];",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('no passwordHash leaked', () => pm.expect(res.data).to.not.have.property('passwordHash'));",
+                  "pm.test('PV-10: role is valid', () => pm.expect(VALID_ROLES).to.include(res.data.role));",
+                  "pm.test('role matches the one from login', () => pm.expect(res.data.role).to.eql(pm.environment.get('currentRole')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "POST /users (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"QA Postman\",\n  \"email\": \"qa_postman@pentaclan.com\",\n  \"password\": \"Test1234!\",\n  \"role\": \"technical_lead\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('no passwordHash leaked', () => pm.expect(res.data).to.not.have.property('passwordHash'));",
+                  "pm.environment.set('newUserId', res.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /users (admin, paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "role", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));",
+                  "pm.test('has pagination meta', () => pm.expect(res.meta).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /users/:id (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/users/{{newUserId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{newUserId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('matches requested id', () => pm.expect(res.data.id).to.eql(pm.environment.get('newUserId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /users/:id (admin: cambia rol)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"project_supervisor\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users/{{newUserId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{newUserId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('role updated', () => pm.expect(res.data.role).to.eql('project_supervisor'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /users/me (auto-edicion)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{adminEmail}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('no passwordHash leaked', () => pm.expect(res.data).to.not.have.property('passwordHash'));",
+                  "// El PATCH cambia el propio nombre: se refresca `userName` para que los",
+                  "// tests de Projects comparen contra el valor vigente y no contra el viejo.",
+                  "pm.environment.set('userName', res.data.name);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /users/:id (admin, limpia QA)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/users/{{newUserId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{newUserId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Geography",
+      "item": [
+        {
+          "name": "GET /departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/departments", "host": ["{{baseUrl}}"], "path": ["departments"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));",
+                  "if (res.data.length > 0) { pm.environment.set('departmentId', res.data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /departments/:id/provinces",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}/provinces",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments", "{{departmentId}}", "provinces"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const esperado = Number(pm.environment.get('departmentId'));",
+                  "pm.test('solo provincias del departamento pedido', () => pm.expect(res.data.every((p) => p.departmentId === esperado)).to.be.true);",
+                  "if (res.data.length > 0) { pm.environment.set('provinceId', res.data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /provinces/:id/municipalities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/provinces/{{provinceId}}/municipalities",
+              "host": ["{{baseUrl}}"],
+              "path": ["provinces", "{{provinceId}}", "municipalities"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const esperado = Number(pm.environment.get('provinceId'));",
+                  "pm.test('solo municipios de la provincia pedida', () => pm.expect(res.data.every((m) => m.provinceId === esperado)).to.be.true);",
+                  "// Los proyectos se registran en un municipio: se guarda el primero",
+                  "// para que la carpeta Projects pueda usarlo con {{municipalityId}}.",
+                  "if (res.data.length) pm.environment.set('municipalityId', res.data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /departments/:id/provinces (404 padre inexistente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments/999999/provinces",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments", "999999", "provinces"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /departments (404: catalogo de solo lectura)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Nuevo\"\n}" },
+            "url": { "raw": "{{baseUrl}}/departments", "host": ["{{baseUrl}}"], "path": ["departments"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no hay endpoint de escritura', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Public entities",
+      "item": [
+        {
+          "name": "GET /public-entities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/public-entities", "host": ["{{baseUrl}}"], "path": ["public-entities"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));",
+                  "pm.test('el NIT es unico por entidad', () => pm.expect(new Set(res.data.map((e) => e.taxId)).size).to.eql(res.data.length));",
+                  "if (res.data.length > 0) { pm.environment.set('publicEntityId', res.data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /public-entities/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public-entities/{{publicEntityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["public-entities", "{{publicEntityId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('devuelve la entidad pedida', () => pm.expect(res.data.id).to.eql(Number(pm.environment.get('publicEntityId'))));",
+                  "pm.test('sigla AEVIVIENDA', () => pm.expect(res.data.acronym).to.eql('AEVIVIENDA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /public-entities/:id (404 inexistente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/public-entities/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["public-entities", "999999"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('envelope de error', () => pm.expect(pm.response.json().success).to.be.false);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /public-entities (404: catalogo de solo lectura)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"taxId\": 192310023,\n  \"name\": \"Nueva\",\n  \"acronym\": \"NUEVA\"\n}" },
+            "url": { "raw": "{{baseUrl}}/public-entities", "host": ["{{baseUrl}}"], "path": ["public-entities"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no hay endpoint de escritura', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "POST /projects",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Construccion de viviendas sociales - Fase I\",\n  \"contractNo\": \"AEV-2026-{{$randomInt}}\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.environment.set('projectId', res.data.id);",
+                  "pm.environment.set('contractNo', res.data.contractNo);",
+                  "pm.test('el creador sale de la sesion', () => pm.expect(res.data.userName).to.eql(pm.environment.get('userName')));",
+                  "pm.test('asocia la entidad financiadora', () => pm.expect(res.data.publicEntity.id).to.eql(Number(pm.environment.get('publicEntityId'))));",
+                  "pm.test('registra el municipio', () => pm.expect(res.data.municipality.id).to.eql(Number(pm.environment.get('municipalityId'))));",
+                  "pm.test('resuelve la cadena geografica', () => pm.expect(res.data.municipality.department).to.have.property('name'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /projects (400: userId desde el cliente)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Suplantacion\",\n  \"contractNo\": \"AEV-FAKE-001\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}},\n  \"userId\": \"00000000-0000-4000-8000-000000000000\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('userId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /projects (404: entidad inexistente)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sin financiador\",\n  \"contractNo\": \"AEV-NOENT-001\",\n  \"publicEntityId\": 999999,\n  \"municipalityId\": {{municipalityId}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /projects (404: municipio inexistente)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sin ubicacion\",\n  \"contractNo\": \"AEV-NOMUN-001\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": 999999\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('el motivo es el municipio', () => pm.expect(pm.response.text()).to.include('Municipality'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /projects (409: nro de contrato duplicado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Contrato repetido\",\n  \"contractNo\": \"{{contractNo}}\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}}\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /projects (401: sin sesion)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sin sesion\",\n  \"contractNo\": \"AEV-NOAUTH-001\",\n  \"publicEntityId\": 1,\n  \"municipalityId\": 1\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /projects (403: rol sin permiso)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{techToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Rol sin permiso\",\n  \"contractNo\": \"AEV-FORBIDDEN-001\",\n  \"publicEntityId\": {{publicEntityId}},\n  \"municipalityId\": {{municipalityId}}\n}" },
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// La escritura de proyectos es admin-only: hace falta el token de otro rol.",
+                  "// Depende del seeder dev de usuarios de prueba (20260607000002).",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/auth/login',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ email: pm.environment.get('techLeadEmail'), password: pm.environment.get('techLeadPassword') }) }",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) { console.error('No se pudo obtener token de technical_lead; corre el seeder dev.'); return; }",
+                  "  pm.variables.set('techToken', res.json().data.accessToken);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('el motivo es el rol', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('respuesta paginada', () => pm.expect(res.meta).to.have.property('totalPages'));",
+                  "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /projects?userId (trazabilidad)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"],
+              "query": [{ "key": "userId", "value": "{{userId}}" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "// se filtra por el id del creador, pero la respuesta trae su nombre",
+                  "const esperado = pm.environment.get('userName');",
+                  "pm.test('solo proyectos del creador pedido', () => pm.expect(res.data.every((p) => p.userName === esperado)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /projects?municipalityId (ubicacion)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects?municipalityId={{municipalityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects"],
+              "query": [{ "key": "municipalityId", "value": "{{municipalityId}}" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const esperado = Number(pm.environment.get('municipalityId'));",
+                  "pm.test('solo proyectos del municipio pedido', () => pm.expect(res.data.every((p) => p.municipality.id === esperado)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /projects/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('devuelve el proyecto pedido', () => pm.expect(res.data.id).to.eql(pm.environment.get('projectId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /projects/:id",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Construccion de viviendas sociales - Fase II\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('actualiza el nombre', () => pm.expect(res.data.name).to.include('Fase II'));",
+                  "pm.test('el creador no cambia', () => pm.expect(res.data.userName).to.eql(pm.environment.get('userName')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /projects/:id (400: intenta cambiar el creador)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"00000000-0000-4000-8000-000000000000\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /projects/:id (404: fuera de alcance)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/projects/{{projectId}}", "host": ["{{baseUrl}}"], "path": ["projects", "{{projectId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no existe endpoint de borrado', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

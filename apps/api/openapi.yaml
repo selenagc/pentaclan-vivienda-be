@@ -9,7 +9,12 @@ servers:
 tags:
   - name: Health
   - name: Auth
+  - name: Users
   - name: Projects
+  - name: Geography
+    description: Catalogo geografico de Bolivia (datos maestros, solo lectura).
+  - name: Public entities
+    description: Public entity catalog (master data, read-only).
 
 paths:
   /health:
@@ -53,71 +58,15 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
                     properties:
-                      data:
-                        type: object
-                        properties:
-                          accessToken: { type: string }
-                          refreshToken: { type: string }
-                          user: { $ref: '#/components/schemas/User' }
+                      user: { $ref: '#/components/schemas/User' }
+                      accessToken: { type: string }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /auth/refresh:
-    post:
-      tags: [Auth]
-      summary: Issue a new access token from a refresh token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refreshToken]
-              properties:
-                refreshToken: { type: string }
-      responses:
-        '200':
-          description: Token refreshed
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          accessToken: { type: string }
-                          refreshToken: { type: string }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /auth/logout:
-    post:
-      tags: [Auth]
-      summary: Revoke the current refresh token (close current session)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [refreshToken]
-              properties:
-                refreshToken: { type: string }
-      responses:
-        '200':
-          description: Session closed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /auth/me:
@@ -139,6 +88,165 @@ paths:
                       data: { $ref: '#/components/schemas/User' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /users:
+    get:
+      tags: [Users]
+      summary: List users (paginated) — admin only
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [name, email, role, createdAt]
+            default: createdAt
+        - in: query
+          name: sortOrder
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: role
+          schema: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: Paginated list of users
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Users]
+      summary: Create a user — admin only
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUser' }
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/me:
+    patch:
+      tags: [Users]
+      summary: Update own profile (cannot change role)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMe' }
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Users]
+      summary: Get a user by id — admin only
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Users]
+      summary: Update a user — admin only
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUser' }
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Users]
+      summary: Delete a user — admin only
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: User deleted
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /projects:
     get:
       tags: [Projects]
@@ -156,19 +264,24 @@ paths:
           name: sortBy
           schema:
             type: string
-            enum: [name, status, startDate, endDate, createdAt]
+            enum: [name, contractNo, createdAt]
             default: createdAt
         - in: query
           name: sortOrder
           schema: { type: string, enum: [asc, desc], default: desc }
         - in: query
           name: search
+          description: Searches by name and contract number
           schema: { type: string }
         - in: query
-          name: status
-          schema: { $ref: '#/components/schemas/ProjectStatus' }
+          name: publicEntityId
+          schema: { type: integer, minimum: 1 }
         - in: query
-          name: clientId
+          name: municipalityId
+          description: Filters projects by the municipality where they are carried out
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: userId
           schema: { type: string, format: uuid }
       responses:
         '200':
@@ -176,17 +289,27 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/PaginatedEnvelope'
-                  - type: object
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Project' }
+                  meta:
+                    type: object
                     properties:
-                      data:
-                        type: array
-                        items: { $ref: '#/components/schemas/Project' }
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
         '401': { $ref: '#/components/responses/Unauthorized' }
     post:
       tags: [Projects]
-      summary: Create a project
+      summary: Register a project — admin only
+      description: >-
+        The creator (`userId`) is taken from the token, never from the body.
+        Sending it explicitly returns 400. Only the `admin` role can create
+        projects: any other authenticated role gets 403.
       security:
         - BearerAuth: []
       requestBody:
@@ -200,13 +323,17 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Project' }
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Project' }
+                  message: { type: string }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: The funding public entity does not exist
+        '409': { $ref: '#/components/responses/Conflict' }
 
   /projects/{id}:
     parameters:
@@ -221,19 +348,24 @@ paths:
         - BearerAuth: []
       responses:
         '200':
-          description: Project
+          description: Project encontrado
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Project' }
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Project' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Projects]
-      summary: Update a project
+      summary: Update a project — admin only
+      description: >-
+        `userId` no es editable: es dato de auditoria. Enviarlo devuelve 400.
+        Solo el rol `admin` puede actualizar: cualquier otro rol autenticado
+        recibe 403.
       security:
         - BearerAuth: []
       requestBody:
@@ -243,25 +375,141 @@ paths:
             schema: { $ref: '#/components/schemas/UpdateProject' }
       responses:
         '200':
-          description: Project updated
+          description: Project actualizado
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Project' }
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Project' }
+                  message: { type: string }
         '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-    delete:
-      tags: [Projects]
-      summary: Delete a project
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /departments:
+    get:
+      tags: [Geography]
+      summary: List the departments in the catalog
       security:
         - BearerAuth: []
       responses:
-        '204':
-          description: Project deleted
+        '200':
+          description: Lista de departments ordenada por name
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Department' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /departments/{id}/provinces:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Geography]
+      summary: List the provinces of a department
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provinces del department indicado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Province' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /provinces/{id}/municipalities:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Geography]
+      summary: List the municipalities of a province
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Municipalitys de la province indicada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Municipality' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /public-entities:
+    get:
+      tags: [Public entities]
+      summary: List the public entities in the catalog
+      description: >-
+        Catalogo de solo lectura cargado por seeder (PV-19). No existen
+        operaciones POST/PUT/PATCH/DELETE.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of public entities sorted by acronym
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/PublicEntity' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /public-entities/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Public entities]
+      summary: Get a public entity by id
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Public entity found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/PublicEntity' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
 
 components:
@@ -307,10 +555,36 @@ components:
             details: {}
     Role:
       type: string
-      enum: [admin, user]
-    ProjectStatus:
-      type: string
-      enum: [active, paused, completed, cancelled]
+      enum: [admin, social_lead, technical_lead, project_supervisor]
+    Department:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: La Paz }
+    Province:
+      type: object
+      required: [id, name, departmentId]
+      properties:
+        id: { type: integer, example: 10 }
+        name: { type: string, example: Murillo }
+        departmentId: { type: integer, example: 1 }
+    Municipality:
+      type: object
+      required: [id, name, provinceId]
+      properties:
+        id: { type: integer, example: 100 }
+        name: { type: string, example: El Alto }
+        provinceId: { type: integer, example: 10 }
+    PublicEntity:
+      type: object
+      required: [id, taxId, name, acronym]
+      properties:
+        id: { type: integer, example: 1 }
+        # Natural key: each public entity has a single institutional tax id.
+        taxId: { type: integer, format: int64, example: 192310023 }
+        name: { type: string, example: Agencia Estatal de Vivienda }
+        acronym: { type: string, example: AEVIVIENDA }
     User:
       type: object
       properties:
@@ -320,37 +594,90 @@ components:
         role: { $ref: '#/components/schemas/Role' }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    CreateUser:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name: { type: string, maxLength: 150 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        role: { $ref: '#/components/schemas/Role' }
+    UpdateUser:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, maxLength: 150 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        role: { $ref: '#/components/schemas/Role' }
+    UpdateMe:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, maxLength: 150 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
     Project:
       type: object
+      required: [id, name, contractNo, publicEntity, municipality, userName]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string }
-        description: { type: string, nullable: true }
-        status: { $ref: '#/components/schemas/ProjectStatus' }
-        startDate: { type: string, format: date, nullable: true }
-        endDate: { type: string, format: date, nullable: true }
-        clientId: { type: string, format: uuid, nullable: true }
+        name: { type: string, example: Construccion de viviendas sociales - Fase I }
+        contractNo: { type: string, example: AEV-2026-0042 }
+        # Entidad financiadora. Se devuelve anidada (id + name) para que el
+        # listado no tenga que resolver el catalogo aparte.
+        publicEntity: { $ref: '#/components/schemas/ProjectPublicEntity' }
+        # Ubicacion del proyecto. La FK llega solo al municipality; province y
+        # department salen de la jerarquia del catalogo geografico.
+        municipality: { $ref: '#/components/schemas/ProjectMunicipality' }
+        # Nombre del usuario que registro el proyecto. Se toma de la sesion y no
+        # es editable. El id del creador no se expone: para filtrar por el se usa
+        # el query param `userId` de GET /projects.
+        userName: { type: string, example: Selena Gutierrez }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    ProjectPublicEntity:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, example: 2 }
+        name: { type: string, example: Agencia Estatal de Vivienda }
+    ProjectMunicipality:
+      type: object
+      required: [id, name, province, department]
+      properties:
+        id: { type: integer, example: 100 }
+        name: { type: string, example: Sacaba }
+        province:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: integer, example: 20 }
+            name: { type: string, example: Chapare }
+        department:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: integer, example: 2 }
+            name: { type: string, example: Cochabamba }
     CreateProject:
       type: object
-      required: [name]
+      required: [name, contractNo, publicEntityId, municipalityId]
       properties:
         name: { type: string, maxLength: 200 }
-        description: { type: string, nullable: true }
-        status: { $ref: '#/components/schemas/ProjectStatus' }
-        startDate: { type: string, format: date, nullable: true }
-        endDate: { type: string, format: date, nullable: true }
-        clientId: { type: string, format: uuid, nullable: true }
+        contractNo: { type: string, maxLength: 50 }
+        publicEntityId: { type: integer, minimum: 1 }
+        # Id del municipality del catalogo geografico (GET /provinces/{id}/municipalities)
+        municipalityId: { type: integer, minimum: 1 }
     UpdateProject:
       type: object
+      minProperties: 1
       properties:
         name: { type: string, maxLength: 200 }
-        description: { type: string, nullable: true }
-        status: { $ref: '#/components/schemas/ProjectStatus' }
-        startDate: { type: string, format: date, nullable: true }
-        endDate: { type: string, format: date, nullable: true }
-        clientId: { type: string, format: uuid, nullable: true }
+        contractNo: { type: string, maxLength: 50 }
+        publicEntityId: { type: integer, minimum: 1 }
+        municipalityId: { type: integer, minimum: 1 }
+
 
   responses:
     ValidationError:
@@ -365,6 +692,16 @@ components:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     NotFound:
       description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: Resource conflict
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }

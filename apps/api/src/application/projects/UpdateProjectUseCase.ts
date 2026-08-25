@@ -1,42 +1,49 @@
 import type { Project } from '../../domain/entities/Project.js';
-import type { ProjectRepository, UpdateProjectInput } from '../../domain/repositories/ProjectRepository.js';
-import type { ProjectStatus } from '../../domain/types/ProjectStatus.js';
+import type { ProjectRepository } from '../../domain/repositories/ProjectRepository.js';
+import type { PublicEntityRepository } from '../../domain/repositories/PublicEntityRepository.js';
+import type { GeographyRepository } from '../../domain/repositories/GeographyRepository.js';
+import { ConflictError } from '../../shared/errors/ConflictError.js';
 import { NotFoundError } from '../../shared/errors/NotFoundError.js';
 
+/** `userId` no aparece: el creador es dato de auditoria y no se edita. */
 export interface UpdateProjectDto {
   name?: string;
-  description?: string | null;
-  status?: ProjectStatus;
-  startDate?: string | Date | null;
-  endDate?: string | Date | null;
-  clientId?: string | null;
-}
-
-function toDateOrNull(value: string | Date | null | undefined): Date | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  if (value instanceof Date) return value;
-  return new Date(value);
+  contractNo?: string;
+  publicEntityId?: number;
+  municipalityId?: number;
 }
 
 export class UpdateProjectUseCase {
-  constructor(private readonly projects: ProjectRepository) {}
+  constructor(
+    private readonly projects: ProjectRepository,
+    private readonly publicEntities: PublicEntityRepository,
+    private readonly geography: GeographyRepository,
+  ) {}
 
   async execute(id: string, dto: UpdateProjectDto): Promise<Project> {
-    const patch: UpdateProjectInput = {};
-    if (dto.name !== undefined) patch.name = dto.name;
-    if (dto.description !== undefined) patch.description = dto.description;
-    if (dto.status !== undefined) patch.status = dto.status;
-    if (dto.clientId !== undefined) patch.clientId = dto.clientId;
+    const project = await this.projects.findById(id);
+    if (!project) throw new NotFoundError(`Project ${id} not found`);
 
-    const startDate = toDateOrNull(dto.startDate);
-    if (startDate !== undefined) patch.startDate = startDate;
+    if (dto.publicEntityId !== undefined) {
+      const publicEntity = await this.publicEntities.findById(dto.publicEntityId);
+      if (!publicEntity) throw new NotFoundError(`Public entity ${dto.publicEntityId} not found`);
+    }
 
-    const endDate = toDateOrNull(dto.endDate);
-    if (endDate !== undefined) patch.endDate = endDate;
+    if (dto.municipalityId !== undefined) {
+      const municipalityFound = await this.geography.municipalityExists(dto.municipalityId);
+      if (!municipalityFound) throw new NotFoundError(`Municipality ${dto.municipalityId} not found`);
+    }
 
-    const updated = await this.projects.update(id, patch);
+    // Solo es conflicto si el contrato pertenece a OTRO proyecto: reenviar el
+    // propio numero en un PUT es legitimo.
+    if (dto.contractNo !== undefined && dto.contractNo !== project.contractNo) {
+      const existing = await this.projects.findByContractNo(dto.contractNo);
+      if (existing) throw new ConflictError('Contract number already in use');
+    }
+
+    const updated = await this.projects.update(id, dto);
     if (!updated) throw new NotFoundError(`Project ${id} not found`);
+
     return updated;
   }
 }

@@ -1,43 +1,24 @@
 import type { RequestHandler } from 'express';
 import { SequelizeProjectRepository } from '../../../infrastructure/repositories/SequelizeProjectRepository.js';
+import { SequelizePublicEntityRepository } from '../../../infrastructure/repositories/SequelizePublicEntityRepository.js';
+import { SequelizeGeographyRepository } from '../../../infrastructure/repositories/SequelizeGeographyRepository.js';
 import { CreateProjectUseCase } from '../../../application/projects/CreateProjectUseCase.js';
 import { GetProjectUseCase } from '../../../application/projects/GetProjectUseCase.js';
-import { UpdateProjectUseCase } from '../../../application/projects/UpdateProjectUseCase.js';
-import { DeleteProjectUseCase } from '../../../application/projects/DeleteProjectUseCase.js';
 import { ListProjectsUseCase } from '../../../application/projects/ListProjectsUseCase.js';
+import { UpdateProjectUseCase } from '../../../application/projects/UpdateProjectUseCase.js';
 import { asyncHandler } from '../../../shared/http/asyncHandler.js';
-import { created, noContent, ok, paginated } from '../../../shared/http/responses.js';
 import { buildPaginationMeta } from '../../../shared/http/pagination.js';
-import type { ProjectStatus } from '../../../domain/types/ProjectStatus.js';
+import { UnauthorizedError } from '../../../shared/errors/UnauthorizedError.js';
 
 const repo = new SequelizeProjectRepository();
-const createUseCase = new CreateProjectUseCase(repo);
+const publicEntitiesRepo = new SequelizePublicEntityRepository();
+const geographyRepo = new SequelizeGeographyRepository();
+const createUseCase = new CreateProjectUseCase(repo, publicEntitiesRepo, geographyRepo);
 const getUseCase = new GetProjectUseCase(repo);
-const updateUseCase = new UpdateProjectUseCase(repo);
-const deleteUseCase = new DeleteProjectUseCase(repo);
 const listUseCase = new ListProjectsUseCase(repo);
+const updateUseCase = new UpdateProjectUseCase(repo, publicEntitiesRepo, geographyRepo);
 
-export const createProject: RequestHandler = asyncHandler(async (req, res) => {
-  const project = await createUseCase.execute(req.body);
-  created(res, project, 'Project created');
-});
-
-export const getProject: RequestHandler = asyncHandler(async (req, res) => {
-  const project = await getUseCase.execute(req.params.id);
-  ok(res, project);
-});
-
-export const updateProject: RequestHandler = asyncHandler(async (req, res) => {
-  const project = await updateUseCase.execute(req.params.id, req.body);
-  ok(res, project, 'Project updated');
-});
-
-export const deleteProject: RequestHandler = asyncHandler(async (req, res) => {
-  await deleteUseCase.execute(req.params.id);
-  noContent(res);
-});
-
-export const listProjects: RequestHandler = asyncHandler(async (req, res) => {
+export const index: RequestHandler = asyncHandler(async (req, res) => {
   const q = req.query as Record<string, string | undefined>;
   const page = Number(q.page) || 1;
   const limit = Number(q.limit) || 20;
@@ -50,9 +31,31 @@ export const listProjects: RequestHandler = asyncHandler(async (req, res) => {
       sortOrder: (q.sortOrder as 'asc' | 'desc') ?? 'desc',
     },
     search: q.search,
-    status: q.status as ProjectStatus | undefined,
-    clientId: q.clientId,
+    publicEntityId: q.publicEntityId ? Number(q.publicEntityId) : undefined,
+    municipalityId: q.municipalityId ? Number(q.municipalityId) : undefined,
+    userId: q.userId,
   });
 
-  paginated(res, result.data, buildPaginationMeta(page, limit, result.total));
+  res.status(200).json({
+    data: result.data,
+    meta: buildPaginationMeta(page, limit, result.total),
+  });
+});
+
+export const store: RequestHandler = asyncHandler(async (req, res) => {
+  if (!req.user) throw new UnauthorizedError();
+
+  // El creador sale del token, no del body: el validator ya rechaza userId.
+  const project = await createUseCase.execute({ ...req.body, userId: req.user.id });
+  res.status(201).json({ data: project, message: 'Project created' });
+});
+
+export const show: RequestHandler = asyncHandler(async (req, res) => {
+  const project = await getUseCase.execute(req.params.id);
+  res.status(200).json({ data: project });
+});
+
+export const update: RequestHandler = asyncHandler(async (req, res) => {
+  const project = await updateUseCase.execute(req.params.id, req.body);
+  res.status(200).json({ data: project, message: 'Project updated' });
 });

@@ -1,14 +1,14 @@
 import type { Project } from '../../domain/entities/Project.js';
 import type { ProjectRepository } from '../../domain/repositories/ProjectRepository.js';
-import type { ProjectStatus } from '../../domain/types/ProjectStatus.js';
 import type { PageRequest, PageResult, SortRequest } from '../../domain/types/Pagination.js';
 
 export interface ListProjectsDto {
   pagination: PageRequest;
   sort: SortRequest;
   search?: string;
-  status?: ProjectStatus;
-  clientId?: string;
+  publicEntityId?: number;
+  municipalityId?: number;
+  userId?: string;
 }
 
 export class ListProjectsUseCase {

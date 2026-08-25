@@ -1,7 +1,20 @@
 import Joi from 'joi';
-import { PROJECT_STATUS_VALUES } from '../../../domain/types/ProjectStatus.js';
 
 const uuid = Joi.string().uuid({ version: 'uuidv4' });
+const publicEntityId = Joi.number().integer().positive();
+const municipalityId = Joi.number().integer().positive();
+
+/**
+ * El creador se toma de la sesion. Se declaran como `forbidden()` (en vez de
+ * dejarlos caer con stripUnknown) para que un cliente que intente fijar el
+ * creador reciba un 400 explicito en lugar de un exito enganoso.
+ */
+const auditFields = {
+  userId: Joi.any().forbidden(),
+  id: Joi.any().forbidden(),
+  createdAt: Joi.any().forbidden(),
+  updatedAt: Joi.any().forbidden(),
+};
 
 export const projectIdParamsSchema = Joi.object({
   id: uuid.required(),
@@ -9,28 +22,27 @@ export const projectIdParamsSchema = Joi.object({
 
 export const createProjectSchema = Joi.object({
   name: Joi.string().trim().min(1).max(200).required(),
-  description: Joi.string().allow(null, '').max(5000),
-  status: Joi.string().valid(...PROJECT_STATUS_VALUES).default('active'),
-  startDate: Joi.alternatives().try(Joi.date().iso(), Joi.valid(null)),
-  endDate: Joi.alternatives().try(Joi.date().iso(), Joi.valid(null)),
-  clientId: Joi.alternatives().try(uuid, Joi.valid(null)),
+  contractNo: Joi.string().trim().min(1).max(50).required(),
+  publicEntityId: publicEntityId.required(),
+  municipalityId: municipalityId.required(),
+  ...auditFields,
 });
 
 export const updateProjectSchema = Joi.object({
   name: Joi.string().trim().min(1).max(200),
-  description: Joi.string().allow(null, '').max(5000),
-  status: Joi.string().valid(...PROJECT_STATUS_VALUES),
-  startDate: Joi.alternatives().try(Joi.date().iso(), Joi.valid(null)),
-  endDate: Joi.alternatives().try(Joi.date().iso(), Joi.valid(null)),
-  clientId: Joi.alternatives().try(uuid, Joi.valid(null)),
+  contractNo: Joi.string().trim().min(1).max(50),
+  publicEntityId,
+  municipalityId,
+  ...auditFields,
 }).min(1);
 
 export const listProjectsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(20),
-  sortBy: Joi.string().valid('name', 'status', 'startDate', 'endDate', 'createdAt').default('createdAt'),
+  sortBy: Joi.string().valid('name', 'contractNo', 'createdAt').default('createdAt'),
   sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
   search: Joi.string().trim().max(200),
-  status: Joi.string().valid(...PROJECT_STATUS_VALUES),
-  clientId: uuid,
+  publicEntityId,
+  municipalityId,
+  userId: uuid,
 });

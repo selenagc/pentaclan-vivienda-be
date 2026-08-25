@@ -1,6 +1,6 @@
 import { createApp } from './app.js';
 import { env } from './shared/config/env.js';
-import { sequelize } from './infrastructure/database/sequelize.js';
+import { sequelize } from './infrastructure/database/index.js';
 
 async function bootstrap(): Promise<void> {
   try {

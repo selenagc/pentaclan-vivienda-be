@@ -1,4 +1,4 @@
-import { Op, type Order, type WhereOptions } from 'sequelize';
+import { Op, type Includeable, type Order, type WhereOptions } from 'sequelize';
 import { ProjectModel } from '../database/models/ProjectModel.js';
 import type { Project } from '../../domain/entities/Project.js';
 import type {
@@ -10,22 +10,61 @@ import type {
 import type { PageResult } from '../../domain/types/Pagination.js';
 
 const SORTABLE_FIELDS_MAP: Record<string, string> = {
-  name: 'name',
-  status: 'status',
-  startDate: 'start_date',
-  endDate: 'end_date',
+  name: 'project_name',
+  contractNo: 'contract_no',
   createdAt: 'created_at',
 };
 
+/**
+ * La ubicacion se arrastra hasta el departamento: la FK del proyecto llega solo
+ * al municipio, el resto de la cadena sale de la jerarquia del catalogo.
+ */
+const INCLUDE_RELATIONS: Includeable[] = [
+  { association: 'user', attributes: ['name'] },
+  { association: 'publicEntity', attributes: ['id', 'name'] },
+  {
+    association: 'municipality',
+    attributes: ['id', 'name'],
+    include: [
+      {
+        association: 'province',
+        attributes: ['id', 'name'],
+        include: [{ association: 'department', attributes: ['id', 'name'] }],
+      },
+    ],
+  },
+];
+
 function toEntity(model: ProjectModel): Project {
+  const user = model.user;
+  const publicEntity = model.publicEntity;
+  const municipality = model.municipality;
+  const province = municipality?.province;
+  const department = province?.department;
+
+  // Falla ruidosamente en desarrollo en vez de devolver datos vacios.
+  if (!user) {
+    throw new Error('SequelizeProjectRepository: missing `user` include');
+  }
+  if (!publicEntity) {
+    throw new Error('SequelizeProjectRepository: missing `publicEntity` include');
+  }
+  if (!municipality || !province || !department) {
+    throw new Error('SequelizeProjectRepository: missing `municipality` include');
+  }
+
   return {
     id: model.id,
     name: model.name,
-    description: model.description,
-    status: model.status,
-    startDate: model.startDate ? new Date(model.startDate) : null,
-    endDate: model.endDate ? new Date(model.endDate) : null,
-    clientId: model.clientId,
+    contractNo: model.contractNo,
+    publicEntity: { id: publicEntity.id, name: publicEntity.name },
+    municipality: {
+      id: municipality.id,
+      name: municipality.name,
+      province: { id: province.id, name: province.name },
+      department: { id: department.id, name: department.name },
+    },
+    userName: user.name,
     createdAt: model.createdAt,
     updatedAt: model.updatedAt,
   };
@@ -33,52 +72,62 @@ function toEntity(model: ProjectModel): Project {
 
 export class SequelizeProjectRepository implements ProjectRepository {
   async create(input: CreateProjectInput): Promise<Project> {
-    const created = await ProjectModel.create({
-      name: input.name,
-      description: input.description,
-      status: input.status,
-      startDate: input.startDate,
-      endDate: input.endDate,
-      clientId: input.clientId,
-    });
+    const created = await ProjectModel.create(input);
+    await created.reload({ include: INCLUDE_RELATIONS });
     return toEntity(created);
   }
 
   async findById(id: string): Promise<Project | null> {
-    const found = await ProjectModel.findByPk(id);
+    const found = await ProjectModel.findByPk(id, { include: INCLUDE_RELATIONS });
+    return found ? toEntity(found) : null;
+  }
+
+  async findByContractNo(contractNo: string): Promise<Project | null> {
+    const found = await ProjectModel.findOne({
+      where: { contractNo },
+      include: INCLUDE_RELATIONS,
+    });
     return found ? toEntity(found) : null;
   }
 
   async update(id: string, input: UpdateProjectInput): Promise<Project | null> {
     const found = await ProjectModel.findByPk(id);
     if (!found) return null;
+
     await found.update(input);
+    await found.reload({ include: INCLUDE_RELATIONS });
     return toEntity(found);
   }
 
-  async delete(id: string): Promise<boolean> {
-    const deleted = await ProjectModel.destroy({ where: { id } });
-    return deleted > 0;
-  }
-
   async list(query: ListProjectsQuery): Promise<PageResult<Project>> {
-    const where: WhereOptions = {};
+    const conditions: WhereOptions[] = [];
 
-    if (query.status) {
-      (where as Record<string, unknown>).status = query.status;
+    if (query.publicEntityId !== undefined) {
+      conditions.push({ publicEntityId: query.publicEntityId });
     }
-    if (query.clientId) {
-      (where as Record<string, unknown>).clientId = query.clientId;
+    if (query.municipalityId !== undefined) {
+      conditions.push({ municipalityId: query.municipalityId });
+    }
+    if (query.userId) {
+      conditions.push({ userId: query.userId });
     }
     if (query.search) {
-      (where as Record<string, unknown>).name = { [Op.like]: `%${query.search}%` };
+      conditions.push({
+        [Op.or]: [
+          { name: { [Op.like]: `%${query.search}%` } },
+          { contractNo: { [Op.like]: `%${query.search}%` } },
+        ],
+      });
     }
+
+    const where: WhereOptions = conditions.length ? { [Op.and]: conditions } : {};
 
     const sortColumn = SORTABLE_FIELDS_MAP[query.sort.sortBy] ?? 'created_at';
     const order: Order = [[sortColumn, query.sort.sortOrder.toUpperCase()]];
 
     const { rows, count } = await ProjectModel.findAndCountAll({
       where,
+      include: INCLUDE_RELATIONS,
       limit: query.pagination.limit,
       offset: query.pagination.offset,
       order,
