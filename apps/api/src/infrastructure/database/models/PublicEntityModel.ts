@@ -6,7 +6,7 @@ export class PublicEntityModel extends Model<
   InferCreationAttributes<PublicEntityModel>
 > {
   declare id: CreationOptional<number>;
-  // BIGINT: mysql2 lo devuelve como string en runtime, el mapper del
+  // BIGINT: el driver pg lo devuelve como string en runtime, el mapper del
   // repositorio lo normaliza a number antes de salir del dominio.
   declare taxId: number;
   declare name: string;
@@ -16,7 +16,7 @@ export class PublicEntityModel extends Model<
 PublicEntityModel.init(
   {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
       field: 'id_public_entity',

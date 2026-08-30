@@ -10,6 +10,9 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/api",
+    "db:up": "docker compose --env-file apps/api/.env up -d postgres",
+    "db:down": "docker compose --env-file apps/api/.env down",
+    "db:reset": "docker compose --env-file apps/api/.env down -v && docker compose --env-file apps/api/.env up -d postgres",
     "build": "npm run build --workspaces --if-present",
     "start": "npm run start --workspace=apps/api",
     "lint": "npm run lint --workspaces --if-present",

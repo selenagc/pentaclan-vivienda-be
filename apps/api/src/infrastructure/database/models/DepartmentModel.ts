@@ -12,7 +12,7 @@ export class DepartmentModel extends Model<
 DepartmentModel.init(
   {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
       field: 'id_department',
