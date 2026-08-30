@@ -1,8 +1,8 @@
 # Datos de prueba para la colección Postman
 
 Guía para rellenar y ejecutar la colección `pentaclan-vivienda.postman_collection.json`
-contra el entorno local. Los IDs son los reales de la base de desarrollo a
-14/08/2026.
+contra el entorno local. Los IDs son los que producen los seeders sobre una
+base recien creada (`npm run db:up && npm run db:migrate && npm run db:seed`).
 
 ## Puesta en marcha (3 pasos)
 
@@ -21,7 +21,7 @@ Todo lo demás se rellena solo al ejecutar las peticiones en orden.
 | ---------------- | --------------------------------- | -------------------------------------- |
 | `accessToken`    | `Auth > POST /auth/login`         | JWT                                    |
 | `currentRole`    | `Auth > POST /auth/login`         | `admin`                                |
-| `userId`         | `Auth > POST /auth/login`         | `68649e6b-b56e-418f-bb4b-a97f8bda6bbf` |
+| `userId`         | `Auth > POST /auth/login`         | UUID (cambia en cada seed)             |
 | `newUserId`      | `Users > POST /users`             | UUID                                   |
 | `departmentId` | `Geography > GET /departments`  | `5`                                    |
 | `provinceId`    | `Geography > GET .../provinces`  | id de la primera provincia             |
@@ -46,15 +46,12 @@ Todo lo demás se rellena solo al ejecutar las peticiones en orden.
 
 ### Entidades públicas (`publicEntityId`)
 
-Los 9 registros comparten el NIT `192310023`; lo que cambia es el departamento.
+El catalogo tiene un unico registro: el NIT es su clave natural y AEVivienda
+es la unica entidad cargada. La cobertura departamental no se modela aqui.
 
-| `id` | Departamento | | `id` | Departamento |
-| ---- | ------------ |-| ---- | ------------ |
-| 1    | Chuquisaca   | | 6    | Tarija       |
-| 2    | La Paz       | | 7    | Santa Cruz   |
-| 3    | Cochabamba   | | 8    | Beni         |
-| 4    | Oruro        | | 9    | Pando        |
-| 5    | Potosí       | |      |              |
+| `id` | NIT         | Sigla      | Nombre                       |
+| ---- | ----------- | ---------- | ---------------------------- |
+| 1    | 192310023   | AEVIVIENDA | Agencia Estatal de Vivienda  |
 
 ### Usuarios de prueba
 
@@ -64,10 +61,8 @@ Contraseña de todos los no-admin: `Test1234!` (o el valor de `SEED_TEST_PASSWOR
 | ---------------------------------- | -------------------- | ---------------- |
 | `admin@pentaclan.com`              | `admin`              | ✅ Sí            |
 | `technical_lead@pentaclan.com`     | `technical_lead`     | ✅ Sí            |
-| `tech1@pentaclan.com`              | `technical_lead`     | ✅ Sí            |
 | `social_lead@pentaclan.com`        | `social_lead`        | ❌ 403           |
 | `project_supervisor@pentaclan.com` | `project_supervisor` | ❌ 403           |
-| `supervisor1@pentaclan.com`        | `project_supervisor` | ❌ 403           |
 
 ## Orden de ejecución
 
@@ -108,10 +103,10 @@ mandaste. La respuesta trae la entidad y la ubicación ya resueltas:
   "name": "Agencia Estatal de Vivienda"
 },
 "municipality": {
-  "id": 100,
+  "id": 143,
   "name": "Sacaba",
-  "province": { "id": 20, "name": "Chapare" },
-  "department": { "id": 2, "name": "Cochabamba" }
+  "province": { "id": 40, "name": "Chapare" },
+  "department": { "id": 3, "name": "Cochabamba" }
 }
 ```
 
@@ -186,7 +181,7 @@ Filtros disponibles:
 | `sortBy`           | `name`, `contractNo`, `createdAt` | `createdAt`                      |
 | `sortOrder`        | `asc`, `desc`                        | `desc`                           |
 | `search`           | busca en nombre y nro de contrato    | `viviendas`                      |
-| `publicEntityId` | 1–9                                  | `2` (La Paz)                     |
+| `publicEntityId` | id del catalogo                      | `1` (AEVivienda)                 |
 | `municipalityId`      | id del catálogo geográfico           | `{{municipalityId}}`                |
 | `userId`        | UUID                                 | `{{userId}}`                     |
 
