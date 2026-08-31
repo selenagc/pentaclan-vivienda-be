@@ -25,13 +25,14 @@ Todo lo demás se rellena solo al ejecutar las peticiones en orden.
 | `newUserId`      | `Users > POST /users`             | UUID                                   |
 | `departmentId` | `Geography > GET /departments`  | `5`                                    |
 | `provinceId`    | `Geography > GET .../provinces`  | id de la primera provincia             |
-| `municipalityId`    | `Geography > GET .../municipalities`  | id del primer municipio                |
+| `municipalityId`    | `Geography > GET .../municipalities`, y luego `Projects > POST /projects` | id del municipio del proyecto vigente |
 | `publicEntityId`      | `Public entities > GET /public-entities` | `1`                                |
 | `projectId`     | `Projects > POST /projects`     | UUID                                   |
 | `contractNo`    | `Projects > POST /projects`     | `AEV-2026-XXXX`                        |
 | `applicationId` | `Applications > POST /applications` | UUID                               |
 | `applicantDocumentNo` | `Applications > POST /applications` | `CI-1756...` (generado)      |
 | `propertyId`    | `Applications > POST /applications` | UUID de la vivienda creada         |
+| `reusedApplicationId` | `Applications > POST /applications (propertyId…)` | UUID |
 
 ### Se rellenan a mano
 
@@ -248,6 +249,11 @@ Campos editables: `name`, `contractNo`, `publicEntityId`, `municipalityId`.
 
 **Espera 404.** No existe endpoint de borrado (fuera de alcance en PV-21).
 
+> **`POST /projects` deja `{{municipalityId}}` apuntando al municipio del
+> proyecto que acaba de crear.** Si escribes el municipio a mano en el cuerpo
+> en vez de usar `{{municipalityId}}`, esto evita que Applications falle
+> después con un 409 por municipios distintos.
+
 ## Peticiones de la carpeta Applications
 
 ### Antes de nada: no busques la carpeta "Beneficiarios"
@@ -335,7 +341,42 @@ Para un solicitante **sin cónyuge**, quita el bloque `spouse` o ponlo en `null`
 - `latitude` es un **número**, no un string entre comillas.
 - `birthDate` sale tal cual se envió, sin correrse un día.
 
-### 2. `POST /applications` (409: la persona ya postuló a este proyecto)
+### 2. `POST /applications` (propertyId: la vivienda sale del buscador)
+
+```json
+{
+  "projectId": "{{projectId}}",
+  "person": {
+    "documentNo": "CR-{{$timestamp}}",
+    "documentIssuedIn": "LP",
+    "givenNames": "Martha",
+    "paternalSurname": "Quispe",
+    "maternalSurname": "Mamani",
+    "phone": "70112233",
+    "occupation": "Tejedora",
+    "birthDate": "1966-04-30",
+    "sex": "F"
+  },
+  "spouse": null,
+  "propertyId": "{{propertyId}}"
+}
+```
+
+La otra mitad del `xor`. La petición anterior levantó la vivienda en campo
+con un bloque `property`; ésta la **elige del buscador** mandando solo su id,
+que es el camino normal una vez que el padrón tiene datos.
+
+**Espera 201.** La respuesta trae la vivienda entera aunque solo mandaste el
+id, y el `property.id` es el mismo `{{propertyId}}` — no se creó un duplicado.
+
+Dos fichas sobre la misma vivienda **conviven** mientras ninguna esté
+aprobada: el índice único es parcial (`WHERE status = approved`). Es el caso
+del matrimonio que postula la misma casa cada uno por su cuenta; al aprobar,
+solo una puede quedar.
+
+Guarda `{{reusedApplicationId}}`, que la última petición de la carpeta borra.
+
+### 3. `POST /applications` (409: la persona ya postuló a este proyecto)
 
 Mismo cuerpo, pero con `"documentNo": "{{applicantDocumentNo}}"` — el CI que
 guardó la petición anterior.
@@ -343,7 +384,7 @@ guardó la petición anterior.
 **Espera 409.** Una persona no postula dos veces al mismo proyecto. Sí puede
 postular a **otro** proyecto, y ahí se reutiliza su ficha en vez de duplicarla.
 
-### 3. `POST /applications` (409: vivienda fuera del municipio del proyecto)
+### 4. `POST /applications` (409: vivienda fuera del municipio del proyecto)
 
 La petición trae un script previo que busca otro municipio de la misma
 provincia y lo usa en `municipalityId`.
@@ -352,7 +393,7 @@ provincia y lo usa en `municipalityId`.
 municipio donde se ejecuta el proyecto. El mensaje nombra el municipio correcto
 (`must be located in Sacaba`) para que el operador sepa qué corregir.
 
-### 4. `POST /applications` (400: propertyId y property a la vez)
+### 5. `POST /applications` (400: propertyId y property a la vez)
 
 La vivienda entra de dos formas y **solo una a la vez**:
 
@@ -364,12 +405,12 @@ La vivienda entra de dos formas y **solo una a la vez**:
 **Espera 400** al mandar las dos, y también al no mandar ninguna: sin vivienda
 no hay postulación, porque la vivienda es lo que el programa mejora.
 
-### 5. `POST /applications` (400: userId desde el cliente)
+### 6. `POST /applications` (400: userId desde el cliente)
 
 Igual que en proyectos: quien registra sale del token. Mandarlo en el cuerpo se
 rechaza en vez de ignorarse en silencio.
 
-### 6. `POST /applications` (400: status desde el cliente)
+### 7. `POST /applications` (400: status desde el cliente)
 
 ```json
 { "...": "...", "status": "approved" }
@@ -378,18 +419,18 @@ rechaza en vez de ignorarse en silencio.
 **Espera 400.** Nadie se autoaprueba desde el formulario de alta. Aprobar es
 otra operación, con sus propias reglas y su propia auditoría (PV-31).
 
-### 7. `POST /applications` (400: fecha de nacimiento futura)
+### 8. `POST /applications` (400: fecha de nacimiento futura)
 
 `"birthDate": "2099-01-01"` da 400. Nacer en el futuro es error de captura, no
 un caso límite. También se valida el expedido: solo `LP`, `CB`, `SC`, `OR`,
 `PT`, `TJ`, `CH`, `BE`, `PD`.
 
-### 8. `POST /applications` (403: rol sin permiso)
+### 9. `POST /applications` (403: rol sin permiso)
 
 Trae un script previo que entra como `project_supervisor` y usa ese token, así
 que no tienes que cerrar tu sesión de admin. **Espera 403.**
 
-### 9. `GET /applications`
+### 10. `GET /applications`
 
 Filtros disponibles:
 
@@ -404,14 +445,14 @@ Filtros disponibles:
 `applicantName` ordena por apellido paterno del titular, que es como se lee un
 padrón en papel.
 
-### 10. `GET /applications?status=approved` — los beneficiarios
+### 11. `GET /applications?status=approved` — los beneficiarios
 
 **Espera 200 con `data` vacío** mientras estés en PV-30: todas las fichas nacen
 en `pending` y todavía no existe el endpoint que las aprueba. Esta misma
 petición es la que devolverá los beneficiarios cuando llegue PV-31, sin cambiar
 una línea.
 
-### 11. `PUT /applications/:id` — corrección anidada
+### 12. `PUT /applications/:id` — corrección anidada
 
 ```json
 {
@@ -428,7 +469,7 @@ titular de su propia ficha en otro proyecto.
 
 **No se puede cambiar el estado por aquí**: `{"status": "approved"}` da 400.
 
-### 12. `DELETE /applications/:id`
+### 13. `DELETE /applications/:id`
 
 **Espera 204**, y solo con `admin`. Es **borrado lógico**: la ficha sale de los
 listados pero la fila queda en la base con `deleted_at`, porque en un programa
@@ -440,6 +481,13 @@ referenciadas por otras fichas.
 
 Una postulación `approved` **no se borra** (409). Darla de baja es pasarla a
 `withdrawn`, que deja rastro.
+
+### 14. `DELETE /applications/:id` (limpia la ficha del buscador)
+
+Housekeeping del Runner: borra `{{reusedApplicationId}}`, la ficha de la
+petición 2. Sin esto cada corrida deja una postulación suelta colgada de la
+misma vivienda. El inmueble no se toca: es de solo lectura y sigue
+alimentando el buscador que prueba la carpeta Properties.
 
 ## Peticiones de la carpeta Properties
 
@@ -503,7 +551,7 @@ No hay peticiones dedicadas: se prueba cambiando de sesión.
 | `400` en `municipalityId`                             | `{{municipalityId}}` vacío: ejecuta antes `Geography > GET /provinces/:id/municipalities`. |
 | `409` al reejecutar el POST                        | Falta `{{$randomInt}}` en el `contractNo`, o lo fijaste a un valor ya usado. |
 | `403` con el admin                                  | Sesión iniciada con otro rol. Revisa `currentRole` en el environment. |
-| `409 must be located in …` en `POST /applications` | El `municipalityId` de la vivienda no es el del proyecto. Corre `Projects > POST /projects` para que ambos usen el mismo, o copia el municipio del proyecto que estés usando. |
+| `409 must be located in …` en `POST /applications` | Tu `{{projectId}}` y tu `{{municipalityId}}` apuntan a municipios distintos. El mensaje nombra el municipio correcto (`must be located in Collana`): ponlo en el environment, o corre `Projects > POST /projects` de nuevo, que ahora deja los dos sincronizados. |
 | `409 already applied` en `POST /applications`      | Falta `{{$timestamp}}` en el `documentNo`, o estás reusando un CI ya registrado en ese proyecto. |
 | `400` diciendo `spouse` y `person` iguales         | Titular y cónyuge llevan el mismo documento. Los prefijos `CI-` y `CJ-` del cuerpo de ejemplo existen para evitarlo. |
 | `400` en `birthDate`                                | El formato es `YYYY-MM-DD` a secas, no una fecha ISO con hora, y no puede ser futura. |
