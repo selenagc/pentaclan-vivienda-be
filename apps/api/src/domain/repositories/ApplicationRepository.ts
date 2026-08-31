@@ -1,0 +1,108 @@
+import type { Application } from '../entities/Application.js';
+import type { ApplicationStatus } from '../types/ApplicationStatus.js';
+import type { DocumentIssuedIn } from '../types/DocumentIssuedIn.js';
+import type { Sex } from '../types/Sex.js';
+import type { PageRequest, PageResult, SortRequest } from '../types/Pagination.js';
+
+/** Datos de persona tal como llegan del formulario, sin id. */
+export interface PersonInput {
+  documentNo: string;
+  documentIssuedIn: DocumentIssuedIn;
+  givenNames: string;
+  paternalSurname: string;
+  maternalSurname: string | null;
+  phone: string | null;
+  occupation: string | null;
+  birthDate: string;
+  sex: Sex;
+}
+
+export interface PropertyInput {
+  community: string | null;
+  zone: string | null;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  municipalityId: number;
+}
+
+/**
+ * Alta de una postulacion con todo lo que arrastra.
+ *
+ * El inmueble entra de dos formas porque no tiene clave natural: o el operador
+ * eligio uno ya registrado en el buscador (`propertyId`), o levanto uno nuevo
+ * (`property`). Exactamente uno de los dos.
+ *
+ * La persona no necesita esa distincion: el CI mas el lugar de expedicion la
+ * identifican, asi que siempre llega completa y el repositorio decide si crea
+ * una fila nueva o reutiliza la existente. El operador de campo llena el mismo
+ * formulario sin tener que saber si esa persona ya estaba en el sistema.
+ */
+export interface RegisterApplicationInput {
+  projectId: string;
+  /** Auditoria: usuario que registra. Sale de la sesion, no del body. */
+  userId: string;
+  submittedAt: Date;
+  person: PersonInput;
+  /** Nulo cuando el titular no tiene conyuge. */
+  spouse: PersonInput | null;
+  propertyId: string | null;
+  property: PropertyInput | null;
+}
+
+/**
+ * `status` no aparece: cambiarlo es aprobar o rechazar, y eso es una operacion
+ * con sus propias reglas y su propia auditoria (PV-31), no una edicion de
+ * formulario. Tampoco aparece `userId`, que es dato de auditoria inmutable.
+ */
+export interface UpdateApplicationInput {
+  submittedAt?: Date;
+  /** Correccion de los datos del titular; en campo los errores de tipeo abundan. */
+  person?: Partial<PersonInput>;
+  /** `null` desvincula al conyuge sin borrar a la persona. */
+  spouse?: PersonInput | null;
+  /** Cambiar a otro inmueble ya registrado. Excluyente con `property`. */
+  propertyId?: string;
+  /** Corregir los datos del inmueble actual. */
+  property?: Partial<PropertyInput>;
+}
+
+export interface ListApplicationsQuery {
+  pagination: PageRequest;
+  sort: SortRequest;
+  /** Busca por nombres, apellidos o numero de documento. */
+  search?: string;
+  projectId?: string;
+  /**
+   * El filtro que hace de PV-31 casi solo consulta: la lista de beneficiarios
+   * de un proyecto es `projectId` + `status: 'approved'`.
+   */
+  status?: ApplicationStatus;
+  municipalityId?: number;
+}
+
+export interface ApplicationRepository {
+  /**
+   * Atomico: crea o reutiliza persona, conyuge e inmueble, y la postulacion,
+   * todo en una transaccion. Es un solo metodo y no varios encadenados por el
+   * caso de uso porque el formulario es uno solo: si fallara a la mitad
+   * quedarian personas registradas sin postulacion, imposibles de encontrar y
+   * de limpiar.
+   */
+  register(input: RegisterApplicationInput): Promise<Application>;
+  findById(id: string): Promise<Application | null>;
+  /**
+   * Para devolver un 409 claro en vez de dejar que salte el indice unico. Se
+   * busca por documento y no por id de persona porque al registrar todavia no
+   * se sabe si esa persona existe: el CI es lo unico que se tiene en mano.
+   */
+  findByDocumentAndProject(
+    documentNo: string,
+    documentIssuedIn: DocumentIssuedIn,
+    projectId: string,
+  ): Promise<Application | null>;
+  update(id: string, input: UpdateApplicationInput): Promise<Application | null>;
+  /** Borrado logico: la fila queda con `deleted_at` y sale de los listados. */
+  delete(id: string): Promise<boolean>;
+  list(query: ListApplicationsQuery): Promise<PageResult<Application>>;
+}

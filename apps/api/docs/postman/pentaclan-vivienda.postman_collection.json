@@ -854,6 +854,859 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Applications",
+      "description": "PV-30. Registro de solicitantes. No hay folder de beneficiarios: un beneficiario es una postulacion con status=approved, y se lista con el filtro de este mismo endpoint.",
+      "item": [
+        {
+          "name": "POST /applications",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CI-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": {\n    \"documentNo\": \"CJ-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Pedro\",\n    \"paternalSurname\": \"Huanca\",\n    \"birthDate\": \"1945-02-18\",\n    \"sex\": \"M\"\n  },\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{municipalityId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.environment.set('applicationId', res.data.id);",
+                  "pm.environment.set('applicantDocumentNo', res.data.person.documentNo);",
+                  "pm.environment.set('propertyId', res.data.property.id);",
+                  "pm.test('nace en pending', () => pm.expect(res.data.status).to.eql('pending'));",
+                  "pm.test('el registrador sale de la sesion', () => pm.expect(res.data.userName).to.eql(pm.environment.get('userName')));",
+                  "// El conyuge se guarda como persona completa, no como texto suelto:",
+                  "// su fecha de nacimiento hace falta para los cortes demograficos.",
+                  "pm.test('el conyuge trae fecha de nacimiento', () => pm.expect(res.data.person.spouse.birthDate).to.eql('1945-02-18'));",
+                  "// El driver de Postgres devuelve DECIMAL como string; el mapper lo corrige.",
+                  "pm.test('las coordenadas son numeros', () => pm.expect(res.data.property.latitude).to.be.a('number'));",
+                  "// DATEONLY sin pasar por Date: si se convirtiera, se correria un dia.",
+                  "pm.test('la fecha no se corre de dia', () => pm.expect(res.data.person.birthDate).to.eql('1948-07-09'));",
+                  "pm.test('resuelve la cadena geografica', () => pm.expect(res.data.property.municipality.department).to.have.property('name'));",
+                  "pm.test('la vivienda esta en el municipio del proyecto', () => pm.expect(res.data.property.municipality.id).to.eql(Number(pm.environment.get('municipalityId'))));",
+                  "pm.test('nace sin decision', () => pm.expect(res.data.decidedAt).to.be.null);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (409: la persona ya postulo a este proyecto)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"{{applicantDocumentNo}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{municipalityId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Lo bloquea el indice unico parcial applications_person_project_uq.",
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('el motivo es el duplicado', () => pm.expect(pm.response.json().error.code).to.eql('CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (409: vivienda fuera del municipio del proyecto)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CK-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{otherMunicipalityId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// La regla del programa: solo se mejoran viviendas del municipio donde",
+                  "// se ejecuta el proyecto. Hace falta otro municipio de la misma provincia.",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/provinces/' + pm.environment.get('provinceId') + '/municipalities',",
+                  "  method: 'GET',",
+                  "  header: { Authorization: 'Bearer ' + pm.environment.get('accessToken') }",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) { console.error('No se pudo listar municipios de la provincia.'); return; }",
+                  "  const actual = Number(pm.environment.get('municipalityId'));",
+                  "  const otro = res.json().data.find((m) => m.id !== actual);",
+                  "  if (!otro) { console.error('La provincia tiene un solo municipio: el caso no aplica.'); return; }",
+                  "  pm.variables.set('otherMunicipalityId', otro.id);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "// El mensaje nombra el municipio esperado, para que el operador lo corrija.",
+                  "pm.test('el error dice cual es el municipio correcto', () => pm.expect(pm.response.text()).to.include('must be located in'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (400: propertyId y property a la vez)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CL-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"propertyId\": \"{{propertyId}}\",\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{municipalityId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// O se elige un inmueble del buscador, o se levanta uno nuevo. Nunca ambos.",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (400: sin propertyId ni property)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CM-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sin vivienda no hay postulacion: es lo que el programa mejora.",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (400: userId desde el cliente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CN-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{municipalityId}}\n  },\n  \"userId\": \"00000000-0000-4000-8000-000000000000\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('userId'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (400: status desde el cliente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CO-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{municipalityId}}\n  },\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Nadie se autoaprueba desde el formulario: aprobar es otra operacion,",
+                  "// con su propia auditoria (PV-31).",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('status'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (400: fecha de nacimiento futura)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CP-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"2099-01-01\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{municipalityId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('el error apunta a birthDate', () => pm.expect(pm.response.text()).to.include('birthDate'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (403: rol sin permiso)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supervisorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"CQ-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": {{municipalityId}}\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Registrar es de admin, social_lead y technical_lead. project_supervisor",
+                  "// lee pero no escribe. Depende del seeder dev (20260607000002).",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/auth/login',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ email: pm.environment.get('supervisorEmail'), password: pm.environment.get('supervisorPassword') }) }",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) { console.error('No se pudo obtener token de project_supervisor; corre el seeder dev.'); return; }",
+                  "  pm.variables.set('supervisorToken', res.json().data.accessToken);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('el motivo es el rol', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('respuesta paginada', () => pm.expect(res.meta).to.have.property('totalPages'));",
+                  "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications?status=approved (beneficiarios)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?projectId={{projectId}}&status=approved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "projectId",
+                  "value": "{{projectId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "approved"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Este filtro ES la lista de beneficiarios: no hay endpoint aparte.",
+                  "// En PV-30 devuelve vacio porque toda postulacion nace en pending.",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('todas las devueltas estan aprobadas', () => pm.expect(res.data.every((a) => a.status === 'approved')).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications?search (por CI)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?search={{applicantDocumentNo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "{{applicantDocumentNo}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('encuentra al solicitante por documento', () => pm.expect(res.data.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications/:id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('anida persona, vivienda y proyecto', () => { pm.expect(res.data.person).to.be.an('object'); pm.expect(res.data.property).to.be.an('object'); pm.expect(res.data.project).to.be.an('object'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /applications/:id (correccion anidada)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"person\": {\n    \"phone\": \"79999999\"\n  },\n  \"property\": {\n    \"address\": \"Calle 5 nro 42\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// En campo los errores de tipeo abundan: se corrige persona e inmueble",
+                  "// desde la misma ficha, sin tener que editarlos por separado.",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('corrige el telefono', () => pm.expect(res.data.person.phone).to.eql('79999999'));",
+                  "pm.test('corrige la direccion', () => pm.expect(res.data.property.address).to.eql('Calle 5 nro 42'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /applications/:id (desvincula al conyuge)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"spouse\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Desvincular no borra a esa persona: puede ser titular de su propia ficha.",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('queda sin conyuge', () => pm.expect(pm.response.json().data.person.spouse).to.be.null);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /applications/:id (400: intenta aprobar por la puerta de atras)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El estado no se edita: aprobar o rechazar es otra operacion (PV-31).",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('status'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /applications/:id (admin, borrado logico)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Borrado logico: la ficha sale de los listados pero queda en la base.",
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications/:id (404: ya borrada)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Confirma que el borrado logico la saca de las consultas.",
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Properties",
+      "description": "PV-30. Viviendas a mejorar. Solo lectura: el alta ocurre dentro del registro de una postulacion, para que no queden inmuebles cargados sin ficha.",
+      "item": [
+        {
+          "name": "GET /properties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('respuesta paginada', () => pm.expect(res.meta).to.have.property('totalPages'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /properties?municipalityId&search (buscador del formulario)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/properties?municipalityId={{municipalityId}}&search=Alto Lima",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ],
+              "query": [
+                {
+                  "key": "municipalityId",
+                  "value": "{{municipalityId}}"
+                },
+                {
+                  "key": "search",
+                  "value": "Alto Lima"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sin codigo catastral, que el operador encuentre y elija un inmueble ya",
+                  "// registrado es lo unico que evita cargar dos veces la misma vivienda.",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('todas son del municipio pedido', () => pm.expect(res.data.every((p) => p.municipality.id === Number(pm.environment.get('municipalityId')))).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /properties (404: el alta va por la postulacion)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"community\": \"Suelta\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/properties",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "properties"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// No hay alta directa a proposito: un inmueble sin postulacion no le",
+                  "// sirve a nadie y ensuciaria el buscador.",
+                  "pm.test('no existe endpoint de alta directa', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
