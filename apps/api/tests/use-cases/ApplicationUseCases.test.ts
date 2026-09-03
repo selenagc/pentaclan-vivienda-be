@@ -3,6 +3,7 @@ import { GetApplicationUseCase } from '../../src/application/applications/GetApp
 import { ListApplicationsUseCase } from '../../src/application/applications/ListApplicationsUseCase.js';
 import { UpdateApplicationUseCase } from '../../src/application/applications/UpdateApplicationUseCase.js';
 import { DeleteApplicationUseCase } from '../../src/application/applications/DeleteApplicationUseCase.js';
+import { DecideApplicationUseCase } from '../../src/application/applications/DecideApplicationUseCase.js';
 import { ConflictError } from '../../src/shared/errors/ConflictError.js';
 import { NotFoundError } from '../../src/shared/errors/NotFoundError.js';
 import { ValidationError } from '../../src/shared/errors/ValidationError.js';
@@ -12,6 +13,7 @@ import type { Property, PropertyMunicipality } from '../../src/domain/entities/P
 import type { Project } from '../../src/domain/entities/Project.js';
 import type {
   ApplicationRepository,
+  DecideApplicationInput,
   ListApplicationsQuery,
   PersonInput,
   PropertyInput,
@@ -28,6 +30,8 @@ import type { DocumentIssuedIn } from '../../src/domain/types/DocumentIssuedIn.j
 import type { PageResult } from '../../src/domain/types/Pagination.js';
 
 const TECH_ID = '22222222-2222-4222-8222-222222222222';
+/** Quien decide, que en PV-32 no es quien registra. */
+const SUPERVISOR_ID = '33333333-3333-4333-8333-333333333333';
 
 /** Catalogo geografico minimo compartido por los stubs. */
 const MUNICIPALITIES: Record<number, PropertyMunicipality> = {
@@ -191,6 +195,30 @@ class InMemoryApplicationRepository implements ApplicationRepository {
     return application;
   }
 
+  async decide(id: string, input: DecideApplicationInput): Promise<Application | null> {
+    const application = this.applications.find((a) => a.id === id);
+    if (!application) return null;
+
+    application.status = input.status;
+    application.decidedAt = input.decidedAt;
+    application.decidedByName = input.decidedBy === SUPERVISOR_ID ? 'Supervisora Pentaclan' : 'Desconocido';
+    application.rejectionReason = input.rejectionReason;
+    application.updatedAt = new Date();
+
+    return application;
+  }
+
+  async findApprovedByPropertyAndProject(
+    propertyId: string,
+    projectId: string,
+  ): Promise<Application | null> {
+    return (
+      this.applications.find(
+        (a) => a.property.id === propertyId && a.project.id === projectId && a.status === 'approved',
+      ) ?? null
+    );
+  }
+
   async delete(id: string): Promise<boolean> {
     const index = this.applications.findIndex((a) => a.id === id);
     if (index === -1) return false;
@@ -311,6 +339,7 @@ describe('Application use cases', () => {
   let remove: DeleteApplicationUseCase;
   let get: GetApplicationUseCase;
   let list: ListApplicationsUseCase;
+  let decide: DecideApplicationUseCase;
 
   const baseDto = {
     projectId: PROJECT_EL_ALTO,
@@ -332,6 +361,7 @@ describe('Application use cases', () => {
     remove = new DeleteApplicationUseCase(repo);
     get = new GetApplicationUseCase(repo);
     list = new ListApplicationsUseCase(repo);
+    decide = new DecideApplicationUseCase(repo);
   });
 
   describe('register', () => {
@@ -495,28 +525,156 @@ describe('Application use cases', () => {
     });
   });
 
+  describe('decide', () => {
+    const approval = { decision: 'approved' as const, decidedBy: SUPERVISOR_ID };
+    const rejection = {
+      decision: 'rejected' as const,
+      decidedBy: SUPERVISOR_ID,
+      rejectionReason: 'La vivienda no cumple el criterio de vulnerabilidad',
+    };
+
+    it('turns an applicant into a beneficiary: same row, status approved', async () => {
+      const created = await register.execute(baseDto);
+      const decided = await decide.execute(created.id, approval);
+
+      expect(decided.id).toBe(created.id);
+      expect(decided.status).toBe('approved');
+      expect(repo.applications).toHaveLength(1);
+    });
+
+    it('records who decided and when, which is what the audit needs', async () => {
+      const created = await register.execute(baseDto);
+      const decided = await decide.execute(created.id, approval);
+
+      expect(decided.decidedByName).toBe('Supervisora Pentaclan');
+      expect(decided.decidedAt).toBeInstanceOf(Date);
+      // Quien registro no es quien decidio: son dos columnas distintas.
+      expect(decided.userName).toBe('Tecnico Pentaclan');
+    });
+
+    it('leaves an approved application without a rejection reason', async () => {
+      const created = await register.execute(baseDto);
+      const decided = await decide.execute(created.id, approval);
+      expect(decided.rejectionReason).toBeNull();
+    });
+
+    it('keeps the reason on a rejection, trimmed', async () => {
+      const created = await register.execute(baseDto);
+      const decided = await decide.execute(created.id, {
+        ...rejection,
+        rejectionReason: '  Fuera del area del proyecto  ',
+      });
+
+      expect(decided.status).toBe('rejected');
+      expect(decided.rejectionReason).toBe('Fuera del area del proyecto');
+    });
+
+    it('refuses to reject without a reason: an unexplained rejection is unauditable', async () => {
+      const created = await register.execute(baseDto);
+      await expect(
+        decide.execute(created.id, { ...rejection, rejectionReason: '   ' }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('refuses an approval that carries a rejection reason', async () => {
+      const created = await register.execute(baseDto);
+      await expect(
+        decide.execute(created.id, { ...approval, rejectionReason: 'sobra' }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('does not decide twice: a decided application is terminal', async () => {
+      const created = await register.execute(baseDto);
+      await decide.execute(created.id, approval);
+      await expect(decide.execute(created.id, rejection)).rejects.toThrow(ConflictError);
+    });
+
+    it('names the current status when refusing, so the operator knows what happened', async () => {
+      const created = await register.execute(baseDto);
+      await decide.execute(created.id, rejection);
+      await expect(decide.execute(created.id, approval)).rejects.toThrow(/already rejected/);
+    });
+
+    it('decides an application already under review', async () => {
+      const created = await register.execute(baseDto);
+      repo.applications[0].status = 'under_review';
+      const decided = await decide.execute(created.id, approval);
+      expect(decided.status).toBe('approved');
+    });
+
+    it('refuses to decide a withdrawn application', async () => {
+      const created = await register.execute(baseDto);
+      repo.applications[0].status = 'withdrawn';
+      await expect(decide.execute(created.id, approval)).rejects.toThrow(ConflictError);
+    });
+
+    it('allows only one approved application per property and project', async () => {
+      // Marido y esposa postulan la misma casa: dos fichas pendientes es valido.
+      const first = await register.execute({ ...baseDto, propertyId: 'prop-el-alto', property: null });
+      const second = await register.execute({
+        ...baseDto,
+        person: spouse,
+        spouse: null,
+        propertyId: 'prop-el-alto',
+        property: null,
+      });
+
+      await decide.execute(first.id, approval);
+      await expect(decide.execute(second.id, approval)).rejects.toThrow(ConflictError);
+    });
+
+    it('names the existing beneficiary in that conflict', async () => {
+      const first = await register.execute({ ...baseDto, propertyId: 'prop-el-alto', property: null });
+      const second = await register.execute({
+        ...baseDto,
+        person: spouse,
+        spouse: null,
+        propertyId: 'prop-el-alto',
+        property: null,
+      });
+
+      await decide.execute(first.id, approval);
+      await expect(decide.execute(second.id, approval)).rejects.toThrow(/Rosa Maria Condori/);
+    });
+
+    it('still lets the second application be rejected: only approval is capped', async () => {
+      const first = await register.execute({ ...baseDto, propertyId: 'prop-el-alto', property: null });
+      const second = await register.execute({
+        ...baseDto,
+        person: spouse,
+        spouse: null,
+        propertyId: 'prop-el-alto',
+        property: null,
+      });
+
+      await decide.execute(first.id, approval);
+      const decided = await decide.execute(second.id, rejection);
+      expect(decided.status).toBe('rejected');
+    });
+
+    it('fails when the application does not exist', async () => {
+      await expect(decide.execute('ghost', approval)).rejects.toThrow(NotFoundError);
+    });
+  });
+
   describe('read', () => {
     it('fails when the application does not exist', async () => {
       await expect(get.execute('ghost')).rejects.toThrow(NotFoundError);
     });
 
-    it('filters by status, which is how PV-31 lists the beneficiaries', async () => {
+    it('filters by status, which is how the beneficiaries are listed', async () => {
       const created = await register.execute(baseDto);
-      const pending = await list.execute({
-        pagination: { page: 1, limit: 20, offset: 0 },
-        sort: { sortBy: 'submittedAt', sortOrder: 'desc' },
+      const filtros = {
+        pagination: { page: 1, limit: 20, offset: 0 } as const,
+        sort: { sortBy: 'submittedAt', sortOrder: 'desc' } as const,
         projectId: PROJECT_EL_ALTO,
-        status: 'approved',
-      });
-      expect(pending.total).toBe(0);
+        status: 'approved' as const,
+      };
+      expect((await list.execute(filtros)).total).toBe(0);
 
-      repo.applications[0].status = 'approved';
-      const approved = await list.execute({
-        pagination: { page: 1, limit: 20, offset: 0 },
-        sort: { sortBy: 'submittedAt', sortOrder: 'desc' },
-        projectId: PROJECT_EL_ALTO,
-        status: 'approved',
-      });
+      await decide.execute(created.id, { decision: 'approved', decidedBy: SUPERVISOR_ID });
+
+      const approved = await list.execute(filtros);
       expect(approved.total).toBe(1);
       expect(approved.data[0].id).toBe(created.id);
     });

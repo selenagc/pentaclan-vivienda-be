@@ -80,7 +80,7 @@ const propertyPatchSchema = Joi.object(propertyFields).min(1);
  * El creador y el estado se toman del servidor. Se declaran como `forbidden()`
  * (en vez de dejarlos caer con stripUnknown) para que un cliente que intente
  * fijarlos reciba un 400 explicito en lugar de un exito enganoso. `status` y el
- * bloque de decision se manejan en la aprobacion (PV-31), no aqui.
+ * bloque de decision se manejan en la aprobacion (PV-32), no aqui.
  */
 const serverOwnedFields = {
   userId: Joi.any().forbidden(),
@@ -123,6 +123,37 @@ export const updateApplicationSchema = Joi.object({
 })
   .min(1)
   .oxor('propertyId', 'property');
+
+/**
+ * En la decision (PV-32) el estado y su auditoria los pone el servidor: quien
+ * decide sale del token y la hora del reloj del servidor. Se prohiben explicito
+ * por lo mismo que en el alta: un 400 claro antes que un exito enganoso.
+ *
+ * `rejectionReason` no esta aqui porque es el unico campo del bloque que el
+ * cliente si manda, y solo al rechazar.
+ */
+const decisionServerOwnedFields = {
+  status: Joi.any().forbidden(),
+  decidedAt: Joi.any().forbidden(),
+  decidedBy: Joi.any().forbidden(),
+};
+
+/** Aprobar no lleva cuerpo: quien y cuando salen del servidor. */
+export const approveApplicationSchema = Joi.object({
+  // Prohibido tambien al aprobar: un beneficiario con motivo de rechazo
+  // colgado es un dato que despues nadie sabe leer.
+  rejectionReason: Joi.any().forbidden(),
+  ...decisionServerOwnedFields,
+});
+
+/**
+ * El motivo es obligatorio: un rechazo sin explicacion es una fila que nadie
+ * puede justificar en una auditoria. 500 es el largo de la columna.
+ */
+export const rejectApplicationSchema = Joi.object({
+  rejectionReason: Joi.string().trim().min(1).max(500).required(),
+  ...decisionServerOwnedFields,
+});
 
 export const listApplicationsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),

@@ -535,8 +535,9 @@ paths:
 
 
         No cambia el estado: aprobar o rechazar es otra operacion, con sus
-        propias reglas y auditoria (PV-31). La vivienda no puede moverse fuera
-        del municipio del proyecto, ni siquiera editando.
+        propias reglas y auditoria (`POST /applications/{id}/approve` y
+        `/reject`). La vivienda no puede moverse fuera del municipio del
+        proyecto, ni siquiera editando.
       security:
         - BearerAuth: []
       requestBody:
@@ -577,6 +578,95 @@ paths:
       responses:
         '204':
           description: Application eliminada
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /applications/{id}/approve:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Applications]
+      summary: Approve an application — admin and project_supervisor
+      description: >-
+        Convierte al solicitante en beneficiario. La ficha no se mueve de tabla:
+        cambia `status` a `approved` y se sellan `decidedAt` y `decidedBy`, que
+        salen del reloj del servidor y de la sesion. A partir de aqui aparece en
+        `GET /applications?status=approved`.
+
+
+        Sin cuerpo. Mandar `status`, `decidedBy`, `decidedAt` o
+        `rejectionReason` devuelve 400.
+
+
+        Solo se decide sobre `pending` o `under_review`; sobre una ficha ya
+        decidida devuelve 409, porque reabrir una decision pisaria el rastro de
+        quien la tomo. El otro 409 es la regla anti doble beneficio: una sola
+        postulacion aprobada por vivienda y proyecto, asi que si el conyuge ya
+        fue aprobado por la misma casa, esta se rechaza nombrandolo.
+
+
+        Los dos lideres quedan fuera a proposito: registran fichas, no las
+        aprueban.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Application aprobada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /applications/{id}/reject:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Applications]
+      summary: Reject an application — admin and project_supervisor
+      description: >-
+        Deja la ficha en `rejected` con su motivo. El rechazado no desaparece de
+        la base: eso es lo que permite explicar la decision en una auditoria,
+        que es requisito de un programa con fondos publicos.
+
+
+        `rejectionReason` es obligatorio. Las mismas reglas de transicion que
+        `approve`: solo desde `pending` o `under_review`, si no 409.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectApplication' }
+      responses:
+        '200':
+          description: Application rechazada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+                  message: { type: string }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -1102,6 +1192,21 @@ components:
           minProperties: 1
           description: Campos sueltos de PropertyInput, todos opcionales.
         submittedAt: { type: string, format: date-time }
+
+    RejectApplication:
+      type: object
+      description: >-
+        El motivo es el unico campo de la decision que manda el cliente: quien
+        decide sale del token y la hora del servidor. Mandar `status`,
+        `decidedBy` o `decidedAt` devuelve 400.
+      required: [rejectionReason]
+      properties:
+        rejectionReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Por que se rechaza. Sin esto el rechazo no es auditable.
+          example: La vivienda no cumple el criterio de vulnerabilidad
 
 
   responses:

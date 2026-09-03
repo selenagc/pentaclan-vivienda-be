@@ -8,6 +8,7 @@ import type { Application } from '../../domain/entities/Application.js';
 import type { Person, PersonData } from '../../domain/entities/Person.js';
 import type {
   ApplicationRepository,
+  DecideApplicationInput,
   ListApplicationsQuery,
   PersonInput,
   RegisterApplicationInput,
@@ -104,7 +105,7 @@ function toEntity(model: ApplicationModel): Application {
     project: { id: project.id, name: project.name, contractNo: project.contractNo },
     userName: user.name,
     decidedAt: model.decidedAt,
-    // Nulo mientras nadie haya decidido; lo llena PV-31.
+    // Nulo mientras nadie haya decidido; lo llena `decide` (PV-32).
     decidedByName: model.decidedBy?.name ?? null,
     rejectionReason: model.rejectionReason,
     createdAt: model.createdAt,
@@ -239,6 +240,37 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
     });
 
     return this.findById(id);
+  }
+
+  async decide(id: string, input: DecideApplicationInput): Promise<Application | null> {
+    const found = await ApplicationModel.findByPk(id);
+    if (!found) return null;
+
+    // Una sola escritura, sin transaccion: la decision no arrastra otras
+    // tablas, a diferencia del alta. El estado y su auditoria van juntos
+    // porque una fila decidida sin `decidedBy` no le sirve a nadie.
+    await found.update({
+      status: input.status,
+      decidedAt: input.decidedAt,
+      decidedById: input.decidedBy,
+      rejectionReason: input.rejectionReason,
+    });
+
+    return this.findById(id);
+  }
+
+  async findApprovedByPropertyAndProject(
+    propertyId: string,
+    projectId: string,
+  ): Promise<Application | null> {
+    // `paranoid: true` ya excluye las borradas, que es justo lo que hace el
+    // `WHERE deleted_at IS NULL` del indice unico parcial: una postulacion dada
+    // de baja no debe seguir reservando el cupo de la vivienda.
+    const found = await ApplicationModel.findOne({
+      where: { propertyId, projectId, status: 'approved' },
+      include: INCLUDE_RELATIONS,
+    });
+    return found ? toEntity(found) : null;
   }
 
   async delete(id: string): Promise<boolean> {

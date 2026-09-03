@@ -38,7 +38,8 @@ export interface Application {
   userName: string;
   /**
    * Los tres quedan nulos mientras la postulacion no se decide. Los llena la
-   * aprobacion o el rechazo (PV-31).
+   * aprobacion o el rechazo (PV-32). `rejectionReason` solo viaja con
+   * `rejected`; un aprobado lo tiene siempre en null.
    */
   decidedAt: Date | null;
   decidedByName: string | null;
