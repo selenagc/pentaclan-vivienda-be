@@ -1394,6 +1394,87 @@
           ]
         },
         {
+          "name": "GET /applications?status=pending,rejected (varios estados)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?projectId={{projectId}}&status=pending,rejected",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "projectId",
+                  "value": "{{projectId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "pending,rejected"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El filtro admite varios estados en OR. Es lo que sostiene la",
+                  "// pestana de solicitantes del front: \"todos menos los aprobados\".",
+                  "// Con un solo valor habria que filtrar en el cliente, y el total y",
+                  "// las paginas —que los cuenta el servidor— quedarian descuadrados.",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const estados = [...new Set(pm.response.json().data.map((a) => a.status))];",
+                  "pm.test('no se cuela ningun otro estado', () => {",
+                  "  estados.forEach((estado) => pm.expect(['pending', 'rejected']).to.include(estado));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications?status=aprobado (400: estado inexistente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?status=aprobado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "aprobado"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Un estado mal escrito se rechaza en vez de devolver lista vacia,",
+                  "// que es el resultado que mas cuesta diagnosticar.",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('nombra el parametro', () => pm.expect(pm.response.text()).to.include('status'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "GET /applications?search (por CI)",
           "request": {
             "method": "GET",

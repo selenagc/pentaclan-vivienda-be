@@ -434,7 +434,28 @@ paths:
           schema: { type: string, format: uuid }
         - in: query
           name: status
-          schema: { $ref: '#/components/schemas/ApplicationStatus' }
+          description: >-
+            Uno o varios estados, en OR. Admite un valor (`approved`), una lista
+            separada por comas (`pending,rejected`) o el parametro repetido.
+            Ausente no filtra.
+
+
+            Acepta varios porque las dos vistas del padron salen de aqui: los
+            beneficiarios son `approved` y los solicitantes son todos los demas.
+            Esa segunda lista no se puede armar filtrando en el cliente, porque
+            el total y las paginas los cuenta el servidor.
+          explode: false
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ApplicationStatus' }
+          style: form
+          examples:
+            beneficiarios:
+              summary: Los beneficiarios del proyecto
+              value: [approved]
+            solicitantes:
+              summary: Todos menos los aprobados
+              value: [pending, under_review, rejected, withdrawn]
         - in: query
           name: municipalityId
           description: Filters by the municipality where the property is located

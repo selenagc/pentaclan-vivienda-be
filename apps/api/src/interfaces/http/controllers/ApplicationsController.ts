@@ -37,7 +37,11 @@ const deleteUseCase = new DeleteApplicationUseCase(repo);
 const decideUseCase = new DecideApplicationUseCase(repo);
 
 export const index: RequestHandler = asyncHandler(async (req, res) => {
-  const q = req.query as Record<string, string | undefined>;
+  // El validator ya normalizo `status` a un array de estados validos, venga
+  // como valor suelto, como lista separada por comas o repitiendo el parametro.
+  const q = req.query as Record<string, string | undefined> & {
+    status?: ApplicationStatus[];
+  };
   const page = Number(q.page) || 1;
   const limit = Number(q.limit) || 20;
   const offset = (page - 1) * limit;
@@ -50,7 +54,7 @@ export const index: RequestHandler = asyncHandler(async (req, res) => {
     },
     search: q.search,
     projectId: q.projectId,
-    status: q.status as ApplicationStatus | undefined,
+    statuses: q.status,
     municipalityId: q.municipalityId ? Number(q.municipalityId) : undefined,
   });
 

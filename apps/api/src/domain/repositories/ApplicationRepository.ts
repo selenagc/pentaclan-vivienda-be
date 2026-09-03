@@ -89,10 +89,15 @@ export interface ListApplicationsQuery {
   search?: string;
   projectId?: string;
   /**
-   * El filtro que hace de PV-31 casi solo consulta: la lista de beneficiarios
-   * de un proyecto es `projectId` + `status: 'approved'`.
+   * Estados admitidos, en OR. Una lista y no un valor suelto porque las dos
+   * pantallas del padron se piden asi: los beneficiarios son
+   * `['approved']`, y los solicitantes son «todos menos aprobados», que sin
+   * lista habria que filtrar en el cliente y descuadraria el total y las
+   * paginas, que los cuenta el servidor.
+   *
+   * Vacio o ausente significa "sin filtrar", no "ninguno".
    */
-  status?: ApplicationStatus;
+  statuses?: ApplicationStatus[];
   municipalityId?: number;
 }
 

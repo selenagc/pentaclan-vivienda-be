@@ -497,6 +497,13 @@ nacer en `pending`: fíltralo con `?projectId={{projectId}}` para verlo.
 Es la misma petición de siempre, sin una línea de cambio: aprobar solo movió la
 columna `status`.
 
+El filtro admite **varios estados en OR**: `?status=pending,rejected`, o el
+parámetro repetido. Es lo que sostiene las dos pestañas del frontend sin dos
+endpoints —los beneficiarios son `approved` y los solicitantes son todos los
+demás—, y hace falta porque el `total` y las páginas los cuenta el servidor:
+descartar filas ya recibidas descuadraría el pie de la tabla. Un estado mal
+escrito devuelve 400 en vez de una lista vacía.
+
 ### 12. `PUT /applications/:id` — corrección anidada
 
 ```json

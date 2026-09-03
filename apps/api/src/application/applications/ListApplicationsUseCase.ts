@@ -9,10 +9,11 @@ export interface ListApplicationsDto {
   search?: string;
   projectId?: string;
   /**
-   * El filtro que deja PV-31 casi resuelto: la lista de beneficiarios de un
-   * proyecto es este mismo endpoint con `status=approved`.
+   * Estados admitidos, en OR. Es lo que sostiene las dos pestanas del padron
+   * sin dos endpoints: los beneficiarios son `['approved']` y los solicitantes
+   * son el resto de estados.
    */
-  status?: ApplicationStatus;
+  statuses?: ApplicationStatus[];
   municipalityId?: number;
 }
 

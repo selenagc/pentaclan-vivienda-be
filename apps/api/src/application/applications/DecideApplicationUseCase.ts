@@ -70,6 +70,9 @@ export class DecideApplicationUseCase {
 
     throw new ConflictError(
       `This application is already ${application.status} and cannot be decided again`,
+      // Codigo propio: al operador se le resuelve recargando la ficha, no es
+      // el mismo caso que el doble beneficio.
+      'APPLICATION_ALREADY_DECIDED',
     );
   }
 
@@ -111,6 +114,7 @@ export class DecideApplicationUseCase {
     const { givenNames, paternalSurname } = approved.person;
     throw new ConflictError(
       `This property already has an approved application in this project, under ${givenNames} ${paternalSurname}`,
+      'PROPERTY_ALREADY_BENEFITED',
     );
   }
 }

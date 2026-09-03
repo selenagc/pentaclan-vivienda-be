@@ -155,6 +155,34 @@ export const rejectApplicationSchema = Joi.object({
   ...decisionServerOwnedFields,
 });
 
+/**
+ * Filtro de estado: uno solo (`?status=approved`) o varios, separados por coma
+ * (`?status=pending,rejected`) o repitiendo el parametro. Siempre normaliza a
+ * un array, para que el repositorio tenga una sola forma que manejar.
+ *
+ * Acepta varios porque las dos pestanas del padron se piden con este mismo
+ * endpoint: los beneficiarios son `approved`, y los solicitantes son todos los
+ * demas. Con un unico valor, esa segunda lista habria que armarla filtrando en
+ * el cliente, y el total y las paginas —que los cuenta el servidor— quedarian
+ * descuadrados.
+ */
+const statusFilter = Joi.any()
+  .custom((value: unknown, helpers) => {
+    const raw = Array.isArray(value) ? value : String(value).split(',');
+    const values = raw.map((item) => String(item).trim()).filter(Boolean);
+
+    if (values.length === 0) return helpers.error('any.invalid');
+    if (values.some((item) => !APPLICATION_STATUS_VALUES.includes(item as never))) {
+      return helpers.error('any.invalid');
+    }
+
+    // Repetir un estado no cambia el resultado, pero ensucia el IN.
+    return [...new Set(values)];
+  })
+  .messages({
+    'any.invalid': `"status" must be one or more of: ${APPLICATION_STATUS_VALUES.join(', ')}`,
+  });
+
 export const listApplicationsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(20),
@@ -165,7 +193,6 @@ export const listApplicationsQuerySchema = Joi.object({
   /** Busca por nombres, apellidos o numero de documento del titular. */
   search: Joi.string().trim().max(200),
   projectId: uuid,
-  /** `approved` es la lista de beneficiarios del proyecto. */
-  status: Joi.string().valid(...APPLICATION_STATUS_VALUES),
+  status: statusFilter,
   municipalityId,
 });

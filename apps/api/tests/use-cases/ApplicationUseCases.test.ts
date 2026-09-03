@@ -26,6 +26,7 @@ import type { GeographyRepository } from '../../src/domain/repositories/Geograph
 import type { Department } from '../../src/domain/entities/Department.js';
 import type { Province } from '../../src/domain/entities/Province.js';
 import type { Municipality } from '../../src/domain/entities/Municipality.js';
+import type { ApplicationStatus } from '../../src/domain/types/ApplicationStatus.js';
 import type { DocumentIssuedIn } from '../../src/domain/types/DocumentIssuedIn.js';
 import type { PageResult } from '../../src/domain/types/Pagination.js';
 
@@ -229,7 +230,10 @@ class InMemoryApplicationRepository implements ApplicationRepository {
   async list(query: ListApplicationsQuery): Promise<PageResult<Application>> {
     let data = this.applications;
     if (query.projectId) data = data.filter((a) => a.project.id === query.projectId);
-    if (query.status) data = data.filter((a) => a.status === query.status);
+    // Lista vacia es "sin filtrar", igual que en el repositorio real.
+    if (query.statuses?.length) {
+      data = data.filter((a) => query.statuses!.includes(a.status));
+    }
     if (query.municipalityId !== undefined) {
       data = data.filter((a) => a.property.municipality.id === query.municipalityId);
     }
@@ -662,21 +666,52 @@ describe('Application use cases', () => {
       await expect(get.execute('ghost')).rejects.toThrow(NotFoundError);
     });
 
+    /** El listado con los filtros del padron, que solo cambian en `statuses`. */
+    const listBy = (statuses?: ApplicationStatus[]) =>
+      list.execute({
+        pagination: { page: 1, limit: 20, offset: 0 },
+        sort: { sortBy: 'submittedAt', sortOrder: 'desc' },
+        projectId: PROJECT_EL_ALTO,
+        statuses,
+      });
+
     it('filters by status, which is how the beneficiaries are listed', async () => {
       const created = await register.execute(baseDto);
-      const filtros = {
-        pagination: { page: 1, limit: 20, offset: 0 } as const,
-        sort: { sortBy: 'submittedAt', sortOrder: 'desc' } as const,
-        projectId: PROJECT_EL_ALTO,
-        status: 'approved' as const,
-      };
-      expect((await list.execute(filtros)).total).toBe(0);
+      expect((await listBy(['approved'])).total).toBe(0);
 
       await decide.execute(created.id, { decision: 'approved', decidedBy: SUPERVISOR_ID });
 
-      const approved = await list.execute(filtros);
+      const approved = await listBy(['approved']);
       expect(approved.total).toBe(1);
       expect(approved.data[0].id).toBe(created.id);
+    });
+
+    it('accepts several statuses at once, which is how the applicants tab excludes the approved', async () => {
+      const approved = await register.execute(baseDto);
+      const rejected = await register.execute({
+        ...baseDto,
+        person: spouse,
+        spouse: null,
+        propertyId: 'prop-el-alto',
+        property: null,
+      });
+
+      await decide.execute(approved.id, { decision: 'approved', decidedBy: SUPERVISOR_ID });
+      await decide.execute(rejected.id, {
+        decision: 'rejected',
+        decidedBy: SUPERVISOR_ID,
+        rejectionReason: 'fuera del area',
+      });
+
+      const applicants = await listBy(['pending', 'under_review', 'rejected', 'withdrawn']);
+      expect(applicants.total).toBe(1);
+      expect(applicants.data[0].id).toBe(rejected.id);
+    });
+
+    it('treats no statuses as unfiltered, not as none', async () => {
+      await register.execute(baseDto);
+      expect((await listBy()).total).toBe(1);
+      expect((await listBy([])).total).toBe(1);
     });
   });
 });

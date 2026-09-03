@@ -285,8 +285,10 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
     if (query.projectId) {
       conditions.push({ projectId: query.projectId });
     }
-    if (query.status) {
-      conditions.push({ status: query.status });
+    // Lista vacia se trata como "sin filtrar" y no como IN (): un filtro que no
+    // llego no debe vaciar el listado.
+    if (query.statuses?.length) {
+      conditions.push({ status: { [Op.in]: query.statuses } });
     }
 
     const where: WhereOptions = conditions.length ? { [Op.and]: conditions } : {};
