@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
-import { ValidationError as JoiValidationError } from 'joi';
+import Joi from 'joi';
 import { UniqueConstraintError, ValidationError as SequelizeValidationError } from 'sequelize';
 import { AppError } from '../../../shared/errors/AppError.js';
 import { fail } from '../../../shared/http/responses.js';
@@ -10,7 +10,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return fail(res, err.statusCode, err.code, err.message, err.details);
   }
 
-  if (err instanceof JoiValidationError) {
+  if (err instanceof Joi.ValidationError) {
     const details = err.details.map((d) => ({
       path: d.path.join('.'),
       message: d.message,

@@ -4,11 +4,3 @@ export const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(1).required(),
 });
-
-export const refreshSchema = Joi.object({
-  refreshToken: Joi.string().required(),
-});
-
-export const logoutSchema = Joi.object({
-  refreshToken: Joi.string().required(),
-});

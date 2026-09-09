@@ -35,9 +35,9 @@ UserModel.init(
       field: 'password_hash',
     },
     role: {
-      type: DataTypes.ENUM('admin', 'user'),
+      type: DataTypes.ENUM('admin', 'social_lead', 'technical_lead', 'project_supervisor'),
       allowNull: false,
-      defaultValue: 'user',
+      defaultValue: 'social_lead',
     },
     createdAt: {
       type: DataTypes.DATE,
