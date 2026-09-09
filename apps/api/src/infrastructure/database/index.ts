@@ -1,3 +1,6 @@
+
+// Aggregates Sequelize models so importing this module ensures all models are registered.
+
 import './associations.js';
 
 export { sequelize } from './sequelize.js';
@@ -7,3 +10,4 @@ export { DepartamentoModel } from './models/DepartamentoModel.js';
 export { ProvinciaModel } from './models/ProvinciaModel.js';
 export { MunicipioModel } from './models/MunicipioModel.js';
 export { EntidadPublicaModel } from './models/EntidadPublicaModel.js';
+

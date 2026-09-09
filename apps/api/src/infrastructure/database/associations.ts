@@ -5,6 +5,7 @@ import { EntidadPublicaModel } from './models/EntidadPublicaModel.js';
 import { ProyectoModel } from './models/ProyectoModel.js';
 import { UserModel } from './models/UserModel.js';
 
+
 // Jerarquia del catalogo geografico: Departamento -> Provincia -> Municipio.
 // Se declara aqui (y no dentro de cada modelo) para evitar imports circulares.
 DepartamentoModel.hasMany(ProvinciaModel, {
@@ -30,6 +31,7 @@ MunicipioModel.belongsTo(ProvinciaModel, {
   targetKey: 'id',
   as: 'provincia',
 });
+
 
 // Las entidades publicas no cuelgan de un departamento (PV-19): son un catalogo
 // nacional. Si mas adelante hace falta cobertura departamental, va en una tabla
@@ -60,3 +62,4 @@ ProyectoModel.belongsTo(UserModel, {
   targetKey: 'id',
   as: 'usuario',
 });
+

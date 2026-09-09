@@ -795,6 +795,129 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Geografia",
+      "item": [
+        {
+          "name": "GET /departamentos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/departamentos", "host": ["{{baseUrl}}"], "path": ["departamentos"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('data is array', () => pm.expect(res.data).to.be.an('array'));",
+                  "if (res.data.length > 0) { pm.environment.set('departamentoId', res.data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /departamentos/:id/provincias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departamentos/{{departamentoId}}/provincias",
+              "host": ["{{baseUrl}}"],
+              "path": ["departamentos", "{{departamentoId}}", "provincias"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const esperado = Number(pm.environment.get('departamentoId'));",
+                  "pm.test('solo provincias del departamento pedido', () => pm.expect(res.data.every((p) => p.departamentoId === esperado)).to.be.true);",
+                  "if (res.data.length > 0) { pm.environment.set('provinciaId', res.data[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /provincias/:id/municipios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/provincias/{{provinciaId}}/municipios",
+              "host": ["{{baseUrl}}"],
+              "path": ["provincias", "{{provinciaId}}", "municipios"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "const esperado = Number(pm.environment.get('provinciaId'));",
+                  "pm.test('solo municipios de la provincia pedida', () => pm.expect(res.data.every((m) => m.provinciaId === esperado)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /departamentos/:id/provincias (404 padre inexistente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departamentos/999999/provincias",
+              "host": ["{{baseUrl}}"],
+              "path": ["departamentos", "999999", "provincias"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /departamentos (404: catalogo de solo lectura)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Nuevo\"\n}" },
+            "url": { "raw": "{{baseUrl}}/departamentos", "host": ["{{baseUrl}}"], "path": ["departamentos"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('no hay endpoint de escritura', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

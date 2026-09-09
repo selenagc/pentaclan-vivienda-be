@@ -6,6 +6,7 @@ import { proyectosRouter } from './proyectos.routes.js';
 import { departamentosRouter } from './departamentos.routes.js';
 import { provinciasRouter } from './provincias.routes.js';
 import { entidadesRouter } from './entidades.routes.js';
+
 import { clientsRouter } from './clients.routes.js';
 import { filesRouter } from './files.routes.js';
 import { reportsRouter } from './reports.routes.js';
@@ -19,6 +20,7 @@ apiRouter.use('/proyectos', proyectosRouter);
 apiRouter.use('/departamentos', departamentosRouter);
 apiRouter.use('/provincias', provinciasRouter);
 apiRouter.use('/entidades', entidadesRouter);
+
 apiRouter.use('/clients', clientsRouter);
 apiRouter.use('/files', filesRouter);
 apiRouter.use('/reports', reportsRouter);
