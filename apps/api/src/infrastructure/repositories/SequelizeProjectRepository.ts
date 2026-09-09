@@ -140,4 +140,24 @@ export class SequelizeProjectRepository implements ProjectRepository {
       total: count,
     };
   }
+
+  async findAssignedToUser(userId: string): Promise<Project[]> {
+    const projects = await ProjectModel.findAll({
+      include: [
+        ...INCLUDE_RELATIONS,
+        {
+          association: 'assignments',
+          attributes: [],
+          where: {
+            userId,
+            active: true,
+          },
+          required: true,
+        },
+      ],
+      order: [['project_name', 'ASC']],
+    });
+
+    return projects.map(toEntity);
+  }
 }

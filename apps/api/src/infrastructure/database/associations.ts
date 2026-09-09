@@ -7,6 +7,7 @@ import { UserModel } from './models/UserModel.js';
 import { PropertyModel } from './models/PropertyModel.js';
 import { PersonModel } from './models/PersonModel.js';
 import { ApplicationModel } from './models/ApplicationModel.js';
+import { ProjectAssignmentModel } from './models/ProjectAssignmentModel.js';
 
 // Jerarquia del catalogo geografico: Departamento -> Provincia -> Municipio.
 // Se declara aqui (y no dentro de cada modelo) para evitar imports circulares.
@@ -158,4 +159,45 @@ ApplicationModel.belongsTo(UserModel, {
   foreignKey: 'decidedById',
   targetKey: 'id',
   as: 'decidedBy',
+});
+
+// Asignacion de evaluadores a proyectos (PV-35).
+// Tabla intermedia N:M con cascade delete en ambas direcciones.
+ProjectAssignmentModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  targetKey: 'id',
+  as: 'user',
+  onDelete: 'CASCADE',
+});
+ProjectAssignmentModel.belongsTo(ProjectModel, {
+  foreignKey: 'projectId',
+  targetKey: 'id',
+  as: 'project',
+  onDelete: 'CASCADE',
+});
+
+UserModel.hasMany(ProjectAssignmentModel, {
+  foreignKey: 'userId',
+  sourceKey: 'id',
+  as: 'assignments',
+  onDelete: 'CASCADE',
+});
+ProjectModel.hasMany(ProjectAssignmentModel, {
+  foreignKey: 'projectId',
+  sourceKey: 'id',
+  as: 'assignments',
+  onDelete: 'CASCADE',
+});
+
+UserModel.belongsToMany(ProjectModel, {
+  through: ProjectAssignmentModel,
+  foreignKey: 'userId',
+  otherKey: 'projectId',
+  as: 'assignedProjects',
+});
+ProjectModel.belongsToMany(UserModel, {
+  through: ProjectAssignmentModel,
+  foreignKey: 'projectId',
+  otherKey: 'userId',
+  as: 'assignedUsers',
 });

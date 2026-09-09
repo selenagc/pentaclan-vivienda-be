@@ -3,6 +3,7 @@ import { SequelizeApplicationRepository } from '../../../infrastructure/reposito
 import { SequelizePropertyRepository } from '../../../infrastructure/repositories/SequelizePropertyRepository.js';
 import { SequelizeProjectRepository } from '../../../infrastructure/repositories/SequelizeProjectRepository.js';
 import { SequelizeGeographyRepository } from '../../../infrastructure/repositories/SequelizeGeographyRepository.js';
+import { SequelizeProjectAssignmentRepository } from '../../../infrastructure/repositories/SequelizeProjectAssignmentRepository.js';
 import { RegisterApplicationUseCase } from '../../../application/applications/RegisterApplicationUseCase.js';
 import { GetApplicationUseCase } from '../../../application/applications/GetApplicationUseCase.js';
 import { ListApplicationsUseCase } from '../../../application/applications/ListApplicationsUseCase.js';
@@ -12,12 +13,14 @@ import { DecideApplicationUseCase } from '../../../application/applications/Deci
 import { asyncHandler } from '../../../shared/http/asyncHandler.js';
 import { buildPaginationMeta } from '../../../shared/http/pagination.js';
 import { UnauthorizedError } from '../../../shared/errors/UnauthorizedError.js';
+import { ForbiddenError } from '../../../shared/errors/ForbiddenError.js';
 import type { ApplicationStatus } from '../../../domain/types/ApplicationStatus.js';
 
 const repo = new SequelizeApplicationRepository();
 const propertiesRepo = new SequelizePropertyRepository();
 const projectsRepo = new SequelizeProjectRepository();
 const geographyRepo = new SequelizeGeographyRepository();
+const assignmentRepo = new SequelizeProjectAssignmentRepository();
 
 const registerUseCase = new RegisterApplicationUseCase(
   repo,
@@ -42,6 +45,20 @@ export const index: RequestHandler = asyncHandler(async (req, res) => {
   const q = req.query as Record<string, string | undefined> & {
     status?: ApplicationStatus[];
   };
+
+  // Si el usuario es evaluador (social_lead o technical_lead), debe consultar dentro de un proyecto asignado
+  if (req.user?.role === 'social_lead' || req.user?.role === 'technical_lead') {
+    if (!q.projectId) {
+      throw new ForbiddenError(
+        'Debes consultar las postulaciones dentro del contexto de un proyecto asignado.',
+      );
+    }
+    const isAssigned = await assignmentRepo.isUserAssignedToProject(req.user.id, q.projectId);
+    if (!isAssigned) {
+      throw new ForbiddenError('No estás asignado a este proyecto.');
+    }
+  }
+
   const page = Number(q.page) || 1;
   const limit = Number(q.limit) || 20;
   const offset = (page - 1) * limit;
@@ -67,6 +84,13 @@ export const index: RequestHandler = asyncHandler(async (req, res) => {
 export const store: RequestHandler = asyncHandler(async (req, res) => {
   if (!req.user) throw new UnauthorizedError();
 
+  if (req.user.role === 'social_lead' || req.user.role === 'technical_lead') {
+    const isAssigned = await assignmentRepo.isUserAssignedToProject(req.user.id, req.body.projectId);
+    if (!isAssigned) {
+      throw new ForbiddenError('No estás asignado a este proyecto para registrar postulaciones.');
+    }
+  }
+
   // Quien registra sale del token, no del body: el validator ya rechaza userId.
   const application = await registerUseCase.execute({ ...req.body, userId: req.user.id });
   res.status(201).json({ data: application, message: 'Application created' });
@@ -74,13 +98,30 @@ export const store: RequestHandler = asyncHandler(async (req, res) => {
 
 export const show: RequestHandler = asyncHandler(async (req, res) => {
   const application = await getUseCase.execute(req.params.id);
+
+  if (req.user?.role === 'social_lead' || req.user?.role === 'technical_lead') {
+    const isAssigned = await assignmentRepo.isUserAssignedToProject(req.user.id, application.project.id);
+    if (!isAssigned) {
+      throw new ForbiddenError('No estás asignado al proyecto de esta postulación.');
+    }
+  }
+
   res.status(200).json({ data: application });
 });
 
 export const update: RequestHandler = asyncHandler(async (req, res) => {
+  if (req.user?.role === 'social_lead' || req.user?.role === 'technical_lead') {
+    const currentApp = await getUseCase.execute(req.params.id);
+    const isAssigned = await assignmentRepo.isUserAssignedToProject(req.user.id, currentApp.project.id);
+    if (!isAssigned) {
+      throw new ForbiddenError('No estás asignado al proyecto de esta postulación.');
+    }
+  }
+
   const application = await updateUseCase.execute(req.params.id, req.body);
   res.status(200).json({ data: application, message: 'Application updated' });
 });
+
 
 export const destroy: RequestHandler = asyncHandler(async (req, res) => {
   await deleteUseCase.execute(req.params.id);

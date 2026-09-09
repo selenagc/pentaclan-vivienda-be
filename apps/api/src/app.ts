@@ -34,6 +34,7 @@ export function createApp(): Express {
 
   mountSwagger(app);
 
+  app.use('/api', apiRouter);
   app.use('/', apiRouter);
 
   app.use(notFound);
