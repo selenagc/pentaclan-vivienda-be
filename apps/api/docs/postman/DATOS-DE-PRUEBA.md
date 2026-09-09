@@ -130,6 +130,21 @@ conviven sin problema, pero aprobar la segunda devuelve 409 — es la regla anti
 doble beneficio del programa, y tenerla sembrada deja probarla sin fabricar
 datos a mano.
 
+### Gestión de Asignaciones y Control de Acceso por Proyecto (PV-35 Ampliado)
+
+Además de `GET /api/me/projects`, la API cuenta con gestión completa de asignaciones para `admin` y control de acceso a nivel de proyecto para evaluadores:
+
+1. **Endpoints de Asignación (Exclusivos para `admin`):**
+   * `GET /api/projects/:id/assignments`: Lista evaluadores activos asignados al proyecto con sus datos de usuario.
+   * `POST /api/projects/:id/assignments`: Asigna uno o más evaluadores al proyecto (`{ "userIds": ["<id>"] }`). Valida que tengan rol `social_lead` o `technical_lead`.
+   * `DELETE /api/projects/:id/assignments/:userId`: Da de baja la asignación de un evaluador en el proyecto.
+
+2. **Control de Acceso Estricto (Regla de negocio en Backend):**
+   * Los evaluadores (`social_lead` y `technical_lead`) **únicamente** pueden consultar y operar en los proyectos donde tienen una asignación activa en `project_assignments`.
+   * `GET /api/projects/:id`: Devuelve `403 Forbidden` si el evaluador no está asignado al proyecto.
+   * `GET /api/applications?projectId=:id`: Devuelve `403 Forbidden` si el evaluador consulta un proyecto ajeno.
+   * `GET /api/applications/:id`, `POST /api/applications`, `PUT /api/applications/:id`: Validan que el evaluador pertenezca al proyecto asociado a la postulación antes de permitir lectura o modificación.
+
 Todos los seeders son idempotentes: se pueden volver a correr sin duplicar nada.
 
 ## Orden de ejecución

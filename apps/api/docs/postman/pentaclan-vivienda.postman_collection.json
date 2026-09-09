@@ -1039,6 +1039,84 @@
               }
             }
           ]
+        },
+        {
+          "name": "GET /projects/{{projectId}}/assignments (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}", "assignments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('envelope success', () => pm.expect(res.success).to.be.true);",
+                  "pm.test('data es array de asignaciones', () => pm.expect(res.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /projects/{{projectId}}/assignments (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userIds\": [\"{{socialLeadUserId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}", "assignments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('asignacion exitosa', () => pm.expect(res.success).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /projects/{{projectId}}/assignments/:userId (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/projects/{{projectId}}/assignments/{{socialLeadUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["projects", "{{projectId}}", "assignments", "{{socialLeadUserId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

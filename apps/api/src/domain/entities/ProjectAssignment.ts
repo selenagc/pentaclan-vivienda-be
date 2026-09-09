@@ -1,3 +1,10 @@
+export interface ProjectAssignmentUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export interface ProjectAssignment {
   id: number;
   userId: string;
@@ -6,4 +13,5 @@ export interface ProjectAssignment {
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
+  user?: ProjectAssignmentUser;
 }
