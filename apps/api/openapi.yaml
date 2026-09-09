@@ -11,6 +11,10 @@ tags:
   - name: Auth
   - name: Users
   - name: Projects
+  - name: Geografia
+    description: Catalogo geografico de Bolivia (datos maestros, solo lectura).
+  - name: Entidades publicas
+    description: Catalogo de entidades publicas por departamento (datos maestros, solo lectura).
 
 paths:
   /health:
@@ -368,6 +372,158 @@ paths:
           description: Project deleted
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /departamentos:
+    get:
+      tags: [Geografia]
+      summary: Listar los departamentos del catalogo
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de departamentos ordenada por nombre
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Departamento' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /departamentos/{id}/provincias:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Geografia]
+      summary: Listar las provincias de un departamento
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provincias del departamento indicado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Provincia' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /provincias/{id}/municipios:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Geografia]
+      summary: Listar los municipios de una provincia
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Municipios de la provincia indicada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Municipio' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /entidades:
+    get:
+      tags: [Entidades publicas]
+      summary: Listar las entidades publicas del catalogo
+      description: >-
+        Catalogo de solo lectura cargado por seeder (PV-19). No existen
+        operaciones POST/PUT/PATCH/DELETE.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de entidades ordenada por departamento y sigla
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/EntidadPublica' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /entidades/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Entidades publicas]
+      summary: Obtener una entidad publica por su ID
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Entidad publica encontrada
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/EntidadPublica' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /departamentos/{id}/entidades:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Entidades publicas]
+      summary: Listar las entidades publicas de un departamento
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Entidades publicas del departamento indicado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/EntidadPublica' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
 components:
   securitySchemes:
     BearerAuth:
@@ -415,6 +571,37 @@ components:
     ProjectStatus:
       type: string
       enum: [active, paused, completed, cancelled]
+    Departamento:
+      type: object
+      required: [id, nombre]
+      properties:
+        id: { type: integer, example: 1 }
+        nombre: { type: string, example: La Paz }
+    Provincia:
+      type: object
+      required: [id, nombre, departamentoId]
+      properties:
+        id: { type: integer, example: 10 }
+        nombre: { type: string, example: Murillo }
+        departamentoId: { type: integer, example: 1 }
+    Municipio:
+      type: object
+      required: [id, nombre, provinciaId]
+      properties:
+        id: { type: integer, example: 100 }
+        nombre: { type: string, example: El Alto }
+        provinciaId: { type: integer, example: 10 }
+    EntidadPublica:
+      type: object
+      required: [id, nit, nombre, sigla, departamentoId]
+      properties:
+        id: { type: integer, example: 1 }
+        # AEVivienda usa un unico NIT institucional: se repite en todos los
+        # departamentos y no identifica al registro.
+        nit: { type: integer, format: int64, example: 192310023 }
+        nombre: { type: string, example: Agencia Estatal de Vivienda }
+        sigla: { type: string, example: AEVIVIENDA }
+        departamentoId: { type: integer, example: 6 }
     User:
       type: object
       properties:
