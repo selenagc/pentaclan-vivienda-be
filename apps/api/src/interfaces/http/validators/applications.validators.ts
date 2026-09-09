@@ -80,7 +80,7 @@ const propertyPatchSchema = Joi.object(propertyFields).min(1);
  * El creador y el estado se toman del servidor. Se declaran como `forbidden()`
  * (en vez de dejarlos caer con stripUnknown) para que un cliente que intente
  * fijarlos reciba un 400 explicito en lugar de un exito enganoso. `status` y el
- * bloque de decision se manejan en la aprobacion (PV-31), no aqui.
+ * bloque de decision se manejan en la aprobacion (PV-32), no aqui.
  */
 const serverOwnedFields = {
   userId: Joi.any().forbidden(),
@@ -124,6 +124,65 @@ export const updateApplicationSchema = Joi.object({
   .min(1)
   .oxor('propertyId', 'property');
 
+/**
+ * En la decision (PV-32) el estado y su auditoria los pone el servidor: quien
+ * decide sale del token y la hora del reloj del servidor. Se prohiben explicito
+ * por lo mismo que en el alta: un 400 claro antes que un exito enganoso.
+ *
+ * `rejectionReason` no esta aqui porque es el unico campo del bloque que el
+ * cliente si manda, y solo al rechazar.
+ */
+const decisionServerOwnedFields = {
+  status: Joi.any().forbidden(),
+  decidedAt: Joi.any().forbidden(),
+  decidedBy: Joi.any().forbidden(),
+};
+
+/** Aprobar no lleva cuerpo: quien y cuando salen del servidor. */
+export const approveApplicationSchema = Joi.object({
+  // Prohibido tambien al aprobar: un beneficiario con motivo de rechazo
+  // colgado es un dato que despues nadie sabe leer.
+  rejectionReason: Joi.any().forbidden(),
+  ...decisionServerOwnedFields,
+});
+
+/**
+ * El motivo es obligatorio: un rechazo sin explicacion es una fila que nadie
+ * puede justificar en una auditoria. 500 es el largo de la columna.
+ */
+export const rejectApplicationSchema = Joi.object({
+  rejectionReason: Joi.string().trim().min(1).max(500).required(),
+  ...decisionServerOwnedFields,
+});
+
+/**
+ * Filtro de estado: uno solo (`?status=approved`) o varios, separados por coma
+ * (`?status=pending,rejected`) o repitiendo el parametro. Siempre normaliza a
+ * un array, para que el repositorio tenga una sola forma que manejar.
+ *
+ * Acepta varios porque las dos pestanas del padron se piden con este mismo
+ * endpoint: los beneficiarios son `approved`, y los solicitantes son todos los
+ * demas. Con un unico valor, esa segunda lista habria que armarla filtrando en
+ * el cliente, y el total y las paginas —que los cuenta el servidor— quedarian
+ * descuadrados.
+ */
+const statusFilter = Joi.any()
+  .custom((value: unknown, helpers) => {
+    const raw = Array.isArray(value) ? value : String(value).split(',');
+    const values = raw.map((item) => String(item).trim()).filter(Boolean);
+
+    if (values.length === 0) return helpers.error('any.invalid');
+    if (values.some((item) => !APPLICATION_STATUS_VALUES.includes(item as never))) {
+      return helpers.error('any.invalid');
+    }
+
+    // Repetir un estado no cambia el resultado, pero ensucia el IN.
+    return [...new Set(values)];
+  })
+  .messages({
+    'any.invalid': `"status" must be one or more of: ${APPLICATION_STATUS_VALUES.join(', ')}`,
+  });
+
 export const listApplicationsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(20),
@@ -134,7 +193,6 @@ export const listApplicationsQuerySchema = Joi.object({
   /** Busca por nombres, apellidos o numero de documento del titular. */
   search: Joi.string().trim().max(200),
   projectId: uuid,
-  /** `approved` es la lista de beneficiarios del proyecto. */
-  status: Joi.string().valid(...APPLICATION_STATUS_VALUES),
+  status: statusFilter,
   municipalityId,
 });

@@ -1394,6 +1394,87 @@
           ]
         },
         {
+          "name": "GET /applications?status=pending,rejected (varios estados)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?projectId={{projectId}}&status=pending,rejected",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "projectId",
+                  "value": "{{projectId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "pending,rejected"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El filtro admite varios estados en OR. Es lo que sostiene la",
+                  "// pestana de solicitantes del front: \"todos menos los aprobados\".",
+                  "// Con un solo valor habria que filtrar en el cliente, y el total y",
+                  "// las paginas —que los cuenta el servidor— quedarian descuadrados.",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const estados = [...new Set(pm.response.json().data.map((a) => a.status))];",
+                  "pm.test('no se cuela ningun otro estado', () => {",
+                  "  estados.forEach((estado) => pm.expect(['pending', 'rejected']).to.include(estado));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications?status=aprobado (400: estado inexistente)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?status=aprobado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "aprobado"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Un estado mal escrito se rechaza en vez de devolver lista vacia,",
+                  "// que es el resultado que mas cuesta diagnosticar.",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('nombra el parametro', () => pm.expect(pm.response.text()).to.include('status'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "GET /applications?search (por CI)",
           "request": {
             "method": "GET",
@@ -1570,9 +1651,613 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// El estado no se edita: aprobar o rechazar es otra operacion (PV-31).",
+                  "// El estado no se edita ni por PUT: la puerta principal son",
+                  "// POST /applications/:id/approve y /reject (PV-32).",
                   "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
                   "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('status'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (ficha para decidir)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"DEC-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Rosa Maria\",\n    \"paternalSurname\": \"Condori\",\n    \"maternalSurname\": \"Apaza\",\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1948-07-09\",\n    \"sex\": \"F\"\n  },\n  \"spouse\": null,\n  \"property\": {\n    \"community\": \"Comunidad Alto Lima\",\n    \"zone\": \"Zona Norte\",\n    \"address\": \"Calle 5 s/n\",\n    \"latitude\": -16.5,\n    \"longitude\": -68.16,\n    \"municipalityId\": \"{{municipalityId}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Ficha propia para el flujo de decision: las de arriba terminan",
+                  "// borradas por el housekeeping y una aprobada ya no se puede borrar.",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.environment.set('decisionApplicationId', res.data.id);",
+                  "pm.environment.set('decisionPropertyId', res.data.property.id);",
+                  "pm.environment.set('decisionApplicantName', res.data.person.givenNames + ' ' + res.data.person.paternalSurname);",
+                  "pm.test('nace pendiente y sin decidir', () => {",
+                  "  pm.expect(res.data.status).to.eql('pending');",
+                  "  pm.expect(res.data.decidedAt).to.be.null;",
+                  "  pm.expect(res.data.decidedByName).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications (co-titular sobre la misma vivienda)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"person\": {\n    \"documentNo\": \"TWIN-{{$timestamp}}\",\n    \"documentIssuedIn\": \"LP\",\n    \"givenNames\": \"Pedro\",\n    \"paternalSurname\": \"Huanca\",\n    \"maternalSurname\": null,\n    \"phone\": \"71234567\",\n    \"occupation\": \"Agricultora\",\n    \"birthDate\": \"1945-02-18\",\n    \"sex\": \"M\"\n  },\n  \"spouse\": null,\n  \"propertyId\": \"{{decisionPropertyId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Dos pendientes sobre la misma casa es valido y pasa en campo: marido",
+                  "// y esposa postulan por separado. El tope es de aprobadas, no de fichas.",
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.environment.set('twinApplicationId', res.data.id);",
+                  "pm.test('comparte la vivienda con la otra ficha', () => pm.expect(res.data.property.id).to.eql(pm.environment.get('decisionPropertyId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/approve (403: quien registra no decide)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{leadToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{decisionApplicationId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{decisionApplicationId}}",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Decidir no es de quien registra, asi que hace falta otro token. Se guarda",
+                  "// aparte para no pisar {{accessToken}}, que el resto de la coleccion usa.",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/auth/login',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ email: pm.environment.get('techLeadEmail'), password: pm.environment.get('techLeadPassword') }) }",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) { console.error('No se pudo obtener token de techLead; corre el seeder dev (20260607000002).'); return; }",
+                  "  pm.environment.set('leadToken', res.json().data.accessToken);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El control interno del ticket: technical_lead levanta la ficha en",
+                  "// campo, pero la decision es del supervisor.",
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('el motivo es el rol', () => pm.expect(pm.response.json().error.code).to.eql('FORBIDDEN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/approve (400: aprobar con motivo de rechazo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejectionReason\": \"esto sobra al aprobar\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{decisionApplicationId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{decisionApplicationId}}",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Un beneficiario con motivo de rechazo colgado es un dato que despues",
+                  "// nadie sabe leer. Se rechaza explicito en vez de ignorarlo.",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('no se ignora en silencio', () => pm.expect(pm.response.text()).to.include('rejectionReason'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/approve (project_supervisor)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supervisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{decisionApplicationId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{decisionApplicationId}}",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Decidir no es de quien registra, asi que hace falta otro token. Se guarda",
+                  "// aparte para no pisar {{accessToken}}, que el resto de la coleccion usa.",
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/auth/login',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ email: pm.environment.get('supervisorEmail'), password: pm.environment.get('supervisorPassword') }) }",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) { console.error('No se pudo obtener token de supervisor; corre el seeder dev (20260607000002).'); return; }",
+                  "  pm.environment.set('supervisorToken', res.json().data.accessToken);",
+                  "  pm.environment.set('supervisorName', res.json().data.user.name);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "// El solicitante pasa a beneficiario sin cambiar de tabla ni de id.",
+                  "pm.test('misma ficha, ahora aprobada', () => {",
+                  "  pm.expect(res.data.id).to.eql(pm.environment.get('decisionApplicationId'));",
+                  "  pm.expect(res.data.status).to.eql('approved');",
+                  "});",
+                  "pm.test('queda el rastro de quien decidio y cuando', () => {",
+                  "  pm.expect(res.data.decidedAt).to.be.a('string');",
+                  "  pm.expect(res.data.decidedByName).to.eql(pm.environment.get('supervisorName'));",
+                  "});",
+                  "// Dos columnas distintas: quien levanto la ficha y quien la aprobo.",
+                  "pm.test('quien registro no es quien decidio', () => pm.expect(res.data.userName).to.not.eql(res.data.decidedByName));",
+                  "pm.test('un aprobado no lleva motivo de rechazo', () => pm.expect(res.data.rejectionReason).to.be.null);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications?status=approved (ya figura como beneficiario)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications?projectId={{projectId}}&status=approved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ],
+              "query": [
+                {
+                  "key": "projectId",
+                  "value": "{{projectId}}"
+                },
+                {
+                  "key": "status",
+                  "value": "approved"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// No hay endpoint de beneficiarios: son este listado filtrado.",
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().data.map((a) => a.id);",
+                  "pm.test('la ficha aprobada aparece en el padron', () => pm.expect(ids).to.include(pm.environment.get('decisionApplicationId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/approve (409: la decision no se reabre)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supervisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{decisionApplicationId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{decisionApplicationId}}",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Volver sobre una decision pisaria decided_at y id_decided_by, que son",
+                  "// justo el rastro que la auditoria necesita.",
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('el mensaje nombra el estado actual', () => pm.expect(pm.response.json().error.message).to.include('already approved'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/reject (409: tampoco se rechaza despues)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supervisorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejectionReason\": \"intento de reabrir la decision\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{decisionApplicationId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{decisionApplicationId}}",
+                "reject"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('sigue siendo terminal', () => pm.expect(pm.response.json().error.code).to.eql('CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/approve (409: doble beneficio en la misma vivienda)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supervisorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{twinApplicationId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{twinApplicationId}}",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// La regla central del programa: una sola aprobada por vivienda y",
+                  "// proyecto. La base lo garantiza con un indice unico parcial; el caso de",
+                  "// uso se adelanta para que el operador entienda que paso.",
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('nombra al beneficiario que ya tiene la vivienda', () => pm.expect(pm.response.json().error.message).to.include(pm.environment.get('decisionApplicantName')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/reject (400: rechazo sin motivo)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supervisorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{twinApplicationId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{twinApplicationId}}",
+                "reject"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Un rechazo sin explicacion es una fila que nadie puede justificar seis",
+                  "// meses despues, que es cuando llega la auditoria.",
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('pide el motivo', () => pm.expect(pm.response.text()).to.include('rejectionReason'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/:id/reject (project_supervisor)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supervisorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejectionReason\": \"La vivienda no cumple el criterio de vulnerabilidad\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{twinApplicationId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{twinApplicationId}}",
+                "reject"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('queda rechazada con su motivo', () => {",
+                  "  pm.expect(res.data.status).to.eql('rejected');",
+                  "  pm.expect(res.data.rejectionReason).to.eql('La vivienda no cumple el criterio de vulnerabilidad');",
+                  "});",
+                  "// El rechazado no desaparece: eso es lo que permite explicarlo despues.",
+                  "pm.test('sigue siendo consultable', () => pm.expect(res.data.id).to.eql(pm.environment.get('twinApplicationId')));",
+                  "pm.test('guarda quien rechazo', () => pm.expect(res.data.decidedByName).to.eql(pm.environment.get('supervisorName')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /applications/:id (limpia la ficha rechazada)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{twinApplicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{twinApplicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Housekeeping: una rechazada si se puede borrar, solo la aprobada no.",
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /applications/:id (409: un aprobado no se borra)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{decisionApplicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{decisionApplicationId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sacar a un beneficiario del padron es una baja, no un borrado, y la",
+                  "// baja (`withdrawn`) todavia no tiene endpoint: queda para su ticket.",
+                  "// Mientras tanto cada corrida del runner deja una ficha aprobada viva.",
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('remite a la baja', () => pm.expect(pm.response.json().error.message).to.include('withdraw'));"
                 ]
               }
             }

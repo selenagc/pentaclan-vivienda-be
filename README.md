@@ -18,6 +18,10 @@ packages/
 docker-compose.yml # PostgreSQL for local development
 ```
 
+> Si es tu primera vez con el proyecto, empieza por
+> [docs/SETUP.md](docs/SETUP.md): cubre el clone, los `.env`, Docker y el
+> frontend paso a paso.
+
 ## Prerequisites
 
 - Node.js 22.x
@@ -141,6 +145,7 @@ before adding a new module.
 | Projects  | Implemented (create/read/update, audited creator) |
 | Geography | Implemented (read-only catalog, seeded)      |
 | Public entities | Implemented (read-only catalog, seeded) |
+| Applications | Implemented (register/read/update/delete + approve/reject) |
 | Clients   | Placeholder (returns 501)                    |
 | Files     | Placeholder, S3 adapter scaffolded           |
 | Reports   | Placeholder (returns 501)                    |

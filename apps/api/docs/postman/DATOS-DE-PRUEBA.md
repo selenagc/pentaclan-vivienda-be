@@ -33,6 +33,12 @@ Todo lo demás se rellena solo al ejecutar las peticiones en orden.
 | `applicantDocumentNo` | `Applications > POST /applications` | `CI-1756...` (generado)      |
 | `propertyId`    | `Applications > POST /applications` | UUID de la vivienda creada         |
 | `reusedApplicationId` | `Applications > POST /applications (propertyId…)` | UUID |
+| `supervisorToken` / `supervisorName` | las peticiones de decisión (login propio) | JWT / `Project Supervisor` |
+| `leadToken`     | `POST /applications/:id/approve (403…)` | JWT de `technical_lead`        |
+| `decisionApplicationId` | `Applications > POST /applications (ficha para decidir)` | UUID |
+| `decisionPropertyId` | ídem                                | UUID de su vivienda                    |
+| `decisionApplicantName` | ídem                             | `Rosa Maria Condori`                   |
+| `twinApplicationId` | `POST /applications (co-titular…)`  | UUID de la ficha que comparte vivienda |
 
 ### Se rellenan a mano
 
@@ -65,20 +71,51 @@ es la unica entidad cargada. La cobertura departamental no se modela aqui.
 
 Contraseña de todos los no-admin: `Test1234!` (o el valor de `SEED_TEST_PASSWORD`).
 
-| Email                              | Rol                  | ¿Crea proyectos? | ¿Registra solicitantes? | ¿Borra fichas? |
-| ---------------------------------- | -------------------- | ---------------- | ----------------------- | -------------- |
-| `admin@pentaclan.com`              | `admin`              | ✅ Sí            | ✅ Sí                   | ✅ Sí          |
-| `technical_lead@pentaclan.com`     | `technical_lead`     | ❌ 403           | ✅ Sí                   | ❌ 403         |
-| `social_lead@pentaclan.com`        | `social_lead`        | ❌ 403           | ✅ Sí                   | ❌ 403         |
-| `project_supervisor@pentaclan.com` | `project_supervisor` | ❌ 403           | ❌ 403                  | ❌ 403         |
+| Email                              | Rol                  | ¿Crea proyectos? | ¿Registra solicitantes? | ¿Aprueba/rechaza? | ¿Borra fichas? |
+| ---------------------------------- | -------------------- | ---------------- | ----------------------- | ----------------- | -------------- |
+| `admin@pentaclan.com`              | `admin`              | ✅ Sí            | ✅ Sí                   | ✅ Sí             | ✅ Sí          |
+| `technical_lead@pentaclan.com`     | `technical_lead`     | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         |
+| `social_lead@pentaclan.com`        | `social_lead`        | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         |
+| `project_supervisor@pentaclan.com` | `project_supervisor` | ❌ 403           | ❌ 403                  | ✅ Sí             | ❌ 403         |
 
 Los permisos no son los mismos en los dos módulos, y es a propósito. Crear un
 **proyecto** es un acto administrativo: solo `admin`. Registrar un
 **solicitante** es trabajo de campo, así que lo hacen también los dos líderes.
-`project_supervisor` lee todo y no escribe nada.
+
+Fíjate en la fila del supervisor: es el único rol cuya única escritura es
+decidir. Registrar y aprobar están separados a propósito — quien levanta la
+ficha en campo no es quien la aprueba, que es control interno básico en un
+programa con fondos públicos.
 
 Borrar es solo de `admin` en ambos módulos: un líder que se equivoca pide la
 baja, no la ejecuta.
+
+### Proyectos de demostración
+
+Los seeders dejan dos proyectos ya cargados, con el mismo módulo en dos momentos
+distintos del trámite. Están en municipios diferentes a propósito: es lo que
+hace visible el filtro `municipalityId`, que con un solo municipio no se puede
+probar.
+
+| `contract_no`   | Municipio | Fichas                                        | Para qué sirve                      |
+| --------------- | --------- | --------------------------------------------- | ----------------------------------- |
+| `SEED-PV30-001` | El Alto   | 5 `pending`                                   | el padrón recién levantado, sin decidir |
+| `SEED-PV32-001` | Viacha    | 3 `approved`, 3 `pending`, 1 `rejected`       | el padrón ya resuelto               |
+
+En `SEED-PV32-001`, los 3 aprobados **son** los beneficiarios: aparecen en
+`GET /applications?status=approved` sin que exista ninguna tabla ni endpoint
+aparte para ellos. El rechazado conserva su motivo, y las decisiones están
+atribuidas a `Project Supervisor` mientras que el registro es de `Social Lead`,
+que es la separación de funciones que aplica la API.
+
+Ese proyecto trae además un caso que en campo se repite mucho: **Feliciano
+Ticona está `pending` sobre la misma vivienda que la beneficiaria Gregoria
+Chambi** (son cónyuges y postularon por separado). Dos fichas sobre una casa
+conviven sin problema, pero aprobar la segunda devuelve 409 — es la regla anti
+doble beneficio del programa, y tenerla sembrada deja probarla sin fabricar
+datos a mano.
+
+Los dos seeders son idempotentes: se pueden volver a correr sin duplicar nada.
 
 ## Orden de ejecución
 
@@ -268,7 +305,12 @@ no hay dos listas ni dos tablas, hay una sola con una columna `status`.
 
 Aprobar no mueve nada de sitio: cambia esa columna. Por eso los rechazados
 siguen en el padrón con su motivo, que es lo que permite auditar el programa
-después. En PV-30 todas nacen en `pending`; la transición llega con PV-31.
+después.
+
+La transición la hacen `POST /applications/:id/approve` y `/reject` (PV-32),
+que son de `admin` y `project_supervisor`. Los dos líderes registran fichas
+pero no las deciden: separar quién levanta la ficha de quién la aprueba es
+control interno del programa, y por eso `technical_lead` recibe un 403.
 
 ### 1. `POST /applications` — caso feliz
 
@@ -447,10 +489,20 @@ padrón en papel.
 
 ### 11. `GET /applications?status=approved` — los beneficiarios
 
-**Espera 200 con `data` vacío** mientras estés en PV-30: todas las fichas nacen
-en `pending` y todavía no existe el endpoint que las aprueba. Esta misma
-petición es la que devolverá los beneficiarios cuando llegue PV-31, sin cambiar
-una línea.
+**Espera 200 con los 3 beneficiarios del proyecto `SEED-PV32-001`** (ver
+[Proyectos de demostración](#proyectos-de-demostración)). Sobre el proyecto que
+creaste tú con `POST /projects` devuelve vacío, porque sus fichas acaban de
+nacer en `pending`: fíltralo con `?projectId={{projectId}}` para verlo.
+
+Es la misma petición de siempre, sin una línea de cambio: aprobar solo movió la
+columna `status`.
+
+El filtro admite **varios estados en OR**: `?status=pending,rejected`, o el
+parámetro repetido. Es lo que sostiene las dos pestañas del frontend sin dos
+endpoints —los beneficiarios son `approved` y los solicitantes son todos los
+demás—, y hace falta porque el `total` y las páginas los cuenta el servidor:
+descartar filas ya recibidas descuadraría el pie de la tabla. Un estado mal
+escrito devuelve 400 en vez de una lista vacía.
 
 ### 12. `PUT /applications/:id` — corrección anidada
 

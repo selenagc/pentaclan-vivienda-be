@@ -1,5 +1,5 @@
 import type { Application } from '../entities/Application.js';
-import type { ApplicationStatus } from '../types/ApplicationStatus.js';
+import type { ApplicationDecision, ApplicationStatus } from '../types/ApplicationStatus.js';
 import type { DocumentIssuedIn } from '../types/DocumentIssuedIn.js';
 import type { Sex } from '../types/Sex.js';
 import type { PageRequest, PageResult, SortRequest } from '../types/Pagination.js';
@@ -52,8 +52,8 @@ export interface RegisterApplicationInput {
 
 /**
  * `status` no aparece: cambiarlo es aprobar o rechazar, y eso es una operacion
- * con sus propias reglas y su propia auditoria (PV-31), no una edicion de
- * formulario. Tampoco aparece `userId`, que es dato de auditoria inmutable.
+ * con sus propias reglas y su propia auditoria (`decide`, PV-32), no una
+ * edicion de formulario. Tampoco aparece `userId`, dato de auditoria inmutable.
  */
 export interface UpdateApplicationInput {
   submittedAt?: Date;
@@ -67,6 +67,21 @@ export interface UpdateApplicationInput {
   property?: Partial<PropertyInput>;
 }
 
+/**
+ * Decision sobre una postulacion (PV-32). Los tres campos de auditoria se
+ * escriben juntos y de una sola vez: una fila decidida a la que le falte
+ * `decidedBy` no le sirve a la auditoria del programa.
+ *
+ * `rejectionReason` viaja solo con `rejected`; aprobar no necesita motivo.
+ */
+export interface DecideApplicationInput {
+  status: ApplicationDecision;
+  /** Usuario que decide. Sale de la sesion, nunca del body. */
+  decidedBy: string;
+  decidedAt: Date;
+  rejectionReason: string | null;
+}
+
 export interface ListApplicationsQuery {
   pagination: PageRequest;
   sort: SortRequest;
@@ -74,10 +89,15 @@ export interface ListApplicationsQuery {
   search?: string;
   projectId?: string;
   /**
-   * El filtro que hace de PV-31 casi solo consulta: la lista de beneficiarios
-   * de un proyecto es `projectId` + `status: 'approved'`.
+   * Estados admitidos, en OR. Una lista y no un valor suelto porque las dos
+   * pantallas del padron se piden asi: los beneficiarios son
+   * `['approved']`, y los solicitantes son «todos menos aprobados», que sin
+   * lista habria que filtrar en el cliente y descuadraria el total y las
+   * paginas, que los cuenta el servidor.
+   *
+   * Vacio o ausente significa "sin filtrar", no "ninguno".
    */
-  status?: ApplicationStatus;
+  statuses?: ApplicationStatus[];
   municipalityId?: number;
 }
 
@@ -102,6 +122,19 @@ export interface ApplicationRepository {
     projectId: string,
   ): Promise<Application | null>;
   update(id: string, input: UpdateApplicationInput): Promise<Application | null>;
+  /** Aplica la decision y sus tres campos de auditoria en una sola escritura. */
+  decide(id: string, input: DecideApplicationInput): Promise<Application | null>;
+  /**
+   * Sostiene la regla anti doble beneficio antes de que salte el indice
+   * `applications_property_project_approved_uq`: si la vivienda ya tiene un
+   * aprobado en este proyecto, el caso de uso devuelve un 409 que nombra al
+   * beneficiario en vez de un error de constraint que no le dice nada al
+   * operador. Mismo criterio que `findByDocumentAndProject` al registrar.
+   */
+  findApprovedByPropertyAndProject(
+    propertyId: string,
+    projectId: string,
+  ): Promise<Application | null>;
   /** Borrado logico: la fila queda con `deleted_at` y sale de los listados. */
   delete(id: string): Promise<boolean>;
   list(query: ListApplicationsQuery): Promise<PageResult<Application>>;

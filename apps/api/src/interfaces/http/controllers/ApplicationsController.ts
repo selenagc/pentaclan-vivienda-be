@@ -8,6 +8,7 @@ import { GetApplicationUseCase } from '../../../application/applications/GetAppl
 import { ListApplicationsUseCase } from '../../../application/applications/ListApplicationsUseCase.js';
 import { UpdateApplicationUseCase } from '../../../application/applications/UpdateApplicationUseCase.js';
 import { DeleteApplicationUseCase } from '../../../application/applications/DeleteApplicationUseCase.js';
+import { DecideApplicationUseCase } from '../../../application/applications/DecideApplicationUseCase.js';
 import { asyncHandler } from '../../../shared/http/asyncHandler.js';
 import { buildPaginationMeta } from '../../../shared/http/pagination.js';
 import { UnauthorizedError } from '../../../shared/errors/UnauthorizedError.js';
@@ -33,9 +34,14 @@ const updateUseCase = new UpdateApplicationUseCase(
   geographyRepo,
 );
 const deleteUseCase = new DeleteApplicationUseCase(repo);
+const decideUseCase = new DecideApplicationUseCase(repo);
 
 export const index: RequestHandler = asyncHandler(async (req, res) => {
-  const q = req.query as Record<string, string | undefined>;
+  // El validator ya normalizo `status` a un array de estados validos, venga
+  // como valor suelto, como lista separada por comas o repitiendo el parametro.
+  const q = req.query as Record<string, string | undefined> & {
+    status?: ApplicationStatus[];
+  };
   const page = Number(q.page) || 1;
   const limit = Number(q.limit) || 20;
   const offset = (page - 1) * limit;
@@ -48,7 +54,7 @@ export const index: RequestHandler = asyncHandler(async (req, res) => {
     },
     search: q.search,
     projectId: q.projectId,
-    status: q.status as ApplicationStatus | undefined,
+    statuses: q.status,
     municipalityId: q.municipalityId ? Number(q.municipalityId) : undefined,
   });
 
@@ -79,4 +85,30 @@ export const update: RequestHandler = asyncHandler(async (req, res) => {
 export const destroy: RequestHandler = asyncHandler(async (req, res) => {
   await deleteUseCase.execute(req.params.id);
   res.status(204).send();
+});
+
+/**
+ * Aprobar y rechazar son dos rutas y no un `PUT status`: son transiciones con
+ * reglas propias, no la edicion de un campo. Quien decide sale del token, como
+ * quien registra; el validator ya rechaza `decidedBy` desde el cliente.
+ */
+export const approve: RequestHandler = asyncHandler(async (req, res) => {
+  if (!req.user) throw new UnauthorizedError();
+
+  const application = await decideUseCase.execute(req.params.id, {
+    decision: 'approved',
+    decidedBy: req.user.id,
+  });
+  res.status(200).json({ data: application, message: 'Application approved' });
+});
+
+export const reject: RequestHandler = asyncHandler(async (req, res) => {
+  if (!req.user) throw new UnauthorizedError();
+
+  const application = await decideUseCase.execute(req.params.id, {
+    decision: 'rejected',
+    decidedBy: req.user.id,
+    rejectionReason: req.body.rejectionReason,
+  });
+  res.status(200).json({ data: application, message: 'Application rejected' });
 });
