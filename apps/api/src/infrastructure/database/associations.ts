@@ -4,6 +4,9 @@ import { MunicipalityModel } from './models/MunicipalityModel.js';
 import { PublicEntityModel } from './models/PublicEntityModel.js';
 import { ProjectModel } from './models/ProjectModel.js';
 import { UserModel } from './models/UserModel.js';
+import { PropertyModel } from './models/PropertyModel.js';
+import { PersonModel } from './models/PersonModel.js';
+import { ApplicationModel } from './models/ApplicationModel.js';
 
 // Jerarquia del catalogo geografico: Departamento -> Provincia -> Municipio.
 // Se declara aqui (y no dentro de cada modelo) para evitar imports circulares.
@@ -73,4 +76,86 @@ ProjectModel.belongsTo(UserModel, {
   foreignKey: 'userId',
   targetKey: 'id',
   as: 'user',
+});
+
+// Registro de solicitantes (PV-30).
+
+// Ubicacion del inmueble: igual que el proyecto, la FK llega al municipio y el
+// resto de la cadena sale de la jerarquia del catalogo.
+MunicipalityModel.hasMany(PropertyModel, {
+  foreignKey: 'municipalityId',
+  sourceKey: 'id',
+  as: 'properties',
+  onDelete: 'RESTRICT',
+});
+PropertyModel.belongsTo(MunicipalityModel, {
+  foreignKey: 'municipalityId',
+  targetKey: 'id',
+  as: 'municipality',
+});
+
+// El conyuge es otra persona de la misma tabla. La relacion se declara en un
+// solo sentido, del titular al conyuge, que es lo que captura el formulario.
+PersonModel.belongsTo(PersonModel, {
+  foreignKey: 'spouseId',
+  targetKey: 'id',
+  as: 'spouse',
+});
+
+// La postulacion ata persona, vivienda y proyecto. Las tres son RESTRICT: si la
+// postulacion existe, nada de lo que referencia se puede borrar por debajo.
+PersonModel.hasMany(ApplicationModel, {
+  foreignKey: 'personId',
+  sourceKey: 'id',
+  as: 'applications',
+  onDelete: 'RESTRICT',
+});
+ApplicationModel.belongsTo(PersonModel, {
+  foreignKey: 'personId',
+  targetKey: 'id',
+  as: 'person',
+});
+
+PropertyModel.hasMany(ApplicationModel, {
+  foreignKey: 'propertyId',
+  sourceKey: 'id',
+  as: 'applications',
+  onDelete: 'RESTRICT',
+});
+ApplicationModel.belongsTo(PropertyModel, {
+  foreignKey: 'propertyId',
+  targetKey: 'id',
+  as: 'property',
+});
+
+ProjectModel.hasMany(ApplicationModel, {
+  foreignKey: 'projectId',
+  sourceKey: 'id',
+  as: 'applications',
+  onDelete: 'RESTRICT',
+});
+ApplicationModel.belongsTo(ProjectModel, {
+  foreignKey: 'projectId',
+  targetKey: 'id',
+  as: 'project',
+});
+
+// Dos FK a users en la misma tabla, por eso los alias explicitos. Del lado de
+// users solo se declara la inversa de `user` (quien registro): "las
+// postulaciones que este usuario decidio" no la consulta nadie.
+UserModel.hasMany(ApplicationModel, {
+  foreignKey: 'userId',
+  sourceKey: 'id',
+  as: 'applications',
+  onDelete: 'RESTRICT',
+});
+ApplicationModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  targetKey: 'id',
+  as: 'user',
+});
+ApplicationModel.belongsTo(UserModel, {
+  foreignKey: 'decidedById',
+  targetKey: 'id',
+  as: 'decidedBy',
 });

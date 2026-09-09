@@ -53,6 +53,38 @@ esta forma y no otra:
 | Sigla | `acronym` | `acronym` | |
 | Nombre | `name` | `<entidad>_name` | `project_name`, `entity_name`, … |
 | Usuario | `User` | `users` | Ya estaba en inglés |
+| Persona | `Person` | `people` | Plural irregular: **no** `persons` |
+| Postulación | `Application` | `applications` | Ruta: `/applications` |
+| Inmueble / Vivienda | `Property` | `properties` | Ruta: `/properties` |
+| Cónyuge | `spouse` | `id_spouse` | FK a `people`, auto-referencia |
+| Carnet / CI | `documentNo` | `document_no` | |
+| Expedido | `documentIssuedIn` | `document_issued_in` | `LP`, `CB`, `SC`, … |
+| Nombres | `givenNames` | `given_names` | |
+| Apellido paterno | `paternalSurname` | `paternal_surname` | |
+| Apellido materno | `maternalSurname` | `maternal_surname` | Opcional |
+| Fecha de nacimiento | `birthDate` | `birth_date` | `DATEONLY`, nunca la edad |
+| Sexo | `sex` | `sex` | |
+| Comunidad / Zona | `community` / `zone` | igual | |
+
+### Solicitante y beneficiario no son tablas
+
+No existe `applicants` ni `beneficiaries`, y no conviene crearlas. Son **dos
+estados de una misma postulación**:
+
+| Español | En el modelo |
+| --- | --- |
+| Solicitante | `Application` con `status = 'pending'` |
+| Beneficiario | La misma `Application` con `status = 'approved'` |
+
+Aprobar no mueve nada de tabla: cambia una columna. Por eso los rechazados
+siguen en el padrón con su motivo, que es requisito de auditoría del programa,
+y por eso la lista de beneficiarios de un proyecto es
+`GET /applications?projectId=…&status=approved` y no un endpoint aparte.
+
+La regla general que dejó este ticket: **si el estado nuevo no trae datos
+propios, es una columna, no una tabla**. Cuando aparezcan datos que sólo
+existen después de aprobar (fecha de obra, monto, contratista), ahí sí va una
+tabla que cuelga de la postulación aprobada.
 
 ## Reglas por capa
 
@@ -138,6 +170,27 @@ como referencia. Fuera de un cambio de motor, la regla se mantiene.
 `const data = ...` en un script de test tira
 `SyntaxError: Identifier 'data' has already been declared` bajo newman (en la
 app de Postman pasa desapercibido). Usar otro nombre.
+
+**7. `DECIMAL` vuelve de Postgres como `string`, no como `number`.**
+El driver `pg` serializa `numeric` a string para no perder precisión, aunque el
+modelo lo declare `number`. Sin un `Number()` explícito en el mapper, la API
+devuelve `"latitude": "-16.900000"` entre comillas y el front tiene que
+parsearlo. El typecheck no lo ve: TypeScript cree el `declare` del modelo. Se
+detectó en PV-30 con las coordenadas de `properties`.
+
+**8. `DATEONLY` no debe convertirse a `Date`.**
+Sequelize entrega `DATEONLY` como `'YYYY-MM-DD'` y así hay que dejarlo. Pasarlo
+por `new Date()` lo ancla a un huso horario: una fecha de nacimiento boliviana
+serializada a UTC se corre un día hacia atrás. Por eso `Person.birthDate` es
+`string` en la entidad, y el validator la comprueba con un patrón en vez de
+`Joi.date()`.
+
+**9. Con borrado lógico, los índices únicos van parciales.**
+En una tabla `paranoid`, un `UNIQUE` común sigue contando las filas borradas: un
+registro dado de baja seguiría reservando el CI de la persona y el cupo del
+inmueble, y no se podría volver a registrar. Los únicos de PV-30 llevan
+`WHERE deleted_at IS NULL`. Postgres soporta índices parciales; MySQL no los
+tenía, así que es un patrón nuevo desde PV-23.
 
 ## Cómo decidir un caso que esta tabla no cubre
 
