@@ -858,6 +858,187 @@
               }
             }
           ]
+        },
+        {
+          "name": "GET /api/me/projects (proyectos asignados al usuario actual)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "projects"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('envelope success', () => pm.expect(res.success).to.be.true);",
+                  "pm.test('data es un arreglo', () => pm.expect(res.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/me/projects (Social Lead: solo sus asignaciones)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{socialLeadToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "projects"]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/auth/login',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: {",
+                  "    mode: 'raw',",
+                  "    raw: JSON.stringify({",
+                  "      email: pm.environment.get('socialLeadEmail'),",
+                  "      password: pm.environment.get('socialLeadPassword')",
+                  "    })",
+                  "  }",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) {",
+                  "    console.error('No se pudo autenticar como social_lead; ejecuta el seeder (20260909000002).');",
+                  "    return;",
+                  "  }",
+                  "  pm.variables.set('socialLeadToken', res.json().data.accessToken);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('envelope success', () => pm.expect(res.success).to.be.true);",
+                  "pm.test('social_lead recibe sus proyectos asignados', () => {",
+                  "  pm.expect(res.data).to.be.an('array');",
+                  "  pm.expect(res.data.length).to.be.at.least(1);",
+                  "});",
+                  "if (res.data && res.data.length > 0) {",
+                  "  const p = res.data[0];",
+                  "  pm.test('proyecto contiene ubicacion y datos maestros', () => {",
+                  "    pm.expect(p).to.have.property('id');",
+                  "    pm.expect(p).to.have.property('name');",
+                  "    pm.expect(p).to.have.property('municipality');",
+                  "    pm.expect(p.municipality).to.have.property('department');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/me/projects (usuario sin asignaciones -> [])",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{unassignedToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "projects"]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.sendRequest({",
+                  "  url: pm.environment.get('baseUrl') + '/auth/login',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: {",
+                  "    mode: 'raw',",
+                  "    raw: JSON.stringify({",
+                  "      email: pm.environment.get('unassignedEmail'),",
+                  "      password: pm.environment.get('unassignedPassword')",
+                  "    })",
+                  "  }",
+                  "}, (err, res) => {",
+                  "  if (err || res.code !== 200) {",
+                  "    console.error('No se pudo autenticar usuario sin asignaciones; ejecuta el seeder (20260909000002).');",
+                  "    return;",
+                  "  }",
+                  "  pm.variables.set('unassignedToken', res.json().data.accessToken);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('envelope success', () => pm.expect(res.success).to.be.true);",
+                  "pm.test('devuelve arreglo vacio [] cuando no tiene proyectos asignados', () => {",
+                  "  pm.expect(res.data).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/me/projects (401: sin sesion)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/projects",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "projects"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('el motivo es falta de autenticacion', () => {",
+                  "  pm.expect(pm.response.json().error.code).to.eql('UNAUTHORIZED');",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
