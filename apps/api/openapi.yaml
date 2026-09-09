@@ -10,9 +10,12 @@ tags:
   - name: Health
   - name: Auth
   - name: Users
-  - name: Projects
+  - name: Proyectos
   - name: Geografia
     description: Catalogo geografico de Bolivia (datos maestros, solo lectura).
+  - name: Entidades publicas
+    description: Catalogo de entidades publicas por departamento (datos maestros, solo lectura).
+
 
 paths:
   /health:
@@ -245,10 +248,10 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
-  /projects:
+  /proyectos:
     get:
-      tags: [Projects]
-      summary: List projects (paginated)
+      tags: [Proyectos]
+      summary: Listar proyectos (paginado)
       security:
         - BearerAuth: []
       parameters:
@@ -262,112 +265,248 @@ paths:
           name: sortBy
           schema:
             type: string
-            enum: [name, status, startDate, endDate, createdAt]
+            enum: [nombre, nroContrato, createdAt]
             default: createdAt
         - in: query
           name: sortOrder
           schema: { type: string, enum: [asc, desc], default: desc }
         - in: query
           name: search
+          description: Busca en nombre y nro de contrato
           schema: { type: string }
         - in: query
-          name: status
-          schema: { $ref: '#/components/schemas/ProjectStatus' }
+          name: entidadPublicaId
+          schema: { type: integer, minimum: 1 }
         - in: query
-          name: clientId
+          name: usuarioId
           schema: { type: string, format: uuid }
       responses:
         '200':
-          description: Paginated list of projects
+          description: Lista paginada de proyectos
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/PaginatedEnvelope'
-                  - type: object
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Proyecto' }
+                  meta:
+                    type: object
                     properties:
-                      data:
-                        type: array
-                        items: { $ref: '#/components/schemas/Project' }
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
         '401': { $ref: '#/components/responses/Unauthorized' }
     post:
-      tags: [Projects]
-      summary: Create a project
+      tags: [Proyectos]
+      summary: Registrar un proyecto — admin only
+      description: >-
+        El creador (`usuarioId`) se toma del token, nunca del cuerpo. Enviarlo
+        explicitamente devuelve 400. Solo el rol `admin` puede crear proyectos:
+        cualquier otro rol autenticado recibe 403.
       security:
         - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateProject' }
+            schema: { $ref: '#/components/schemas/CreateProyecto' }
       responses:
         '201':
-          description: Project created
+          description: Proyecto creado
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Project' }
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Proyecto' }
+                  message: { type: string }
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: La entidad publica financiadora no existe
+        '409': { $ref: '#/components/responses/Conflict' }
 
-  /projects/{id}:
+  /proyectos/{id}:
     parameters:
       - in: path
         name: id
         required: true
         schema: { type: string, format: uuid }
     get:
-      tags: [Projects]
-      summary: Get a project by id
+      tags: [Proyectos]
+      summary: Obtener un proyecto por su ID
       security:
         - BearerAuth: []
       responses:
         '200':
-          description: Project
+          description: Proyecto encontrado
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Project' }
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Proyecto' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
     put:
-      tags: [Projects]
-      summary: Update a project
+      tags: [Proyectos]
+      summary: Actualizar un proyecto — admin only
+      description: >-
+        `usuarioId` no es editable: es dato de auditoria. Enviarlo devuelve 400.
+        Solo el rol `admin` puede actualizar: cualquier otro rol autenticado
+        recibe 403.
       security:
         - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/UpdateProject' }
+            schema: { $ref: '#/components/schemas/UpdateProyecto' }
       responses:
         '200':
-          description: Project updated
+          description: Proyecto actualizado
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessEnvelope'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Project' }
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Proyecto' }
+                  message: { type: string }
         '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-    delete:
-      tags: [Projects]
-      summary: Delete a project
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /departamentos:
+    get:
+      tags: [Geografia]
+      summary: Listar los departamentos del catalogo
       security:
         - BearerAuth: []
       responses:
-        '204':
-          description: Project deleted
+        '200':
+          description: Lista de departamentos ordenada por nombre
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Departamento' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /departamentos/{id}/provincias:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Geografia]
+      summary: Listar las provincias de un departamento
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Provincias del departamento indicado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Provincia' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /provincias/{id}/municipios:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Geografia]
+      summary: Listar los municipios de una provincia
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Municipios de la provincia indicada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Municipio' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /entidades:
+    get:
+      tags: [Entidades publicas]
+      summary: Listar las entidades publicas del catalogo
+      description: >-
+        Catalogo de solo lectura cargado por seeder (PV-19). No existen
+        operaciones POST/PUT/PATCH/DELETE.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de entidades ordenada por sigla
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/EntidadPublica' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /entidades/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      tags: [Entidades publicas]
+      summary: Obtener una entidad publica por su ID
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Entidad publica encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/EntidadPublica' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
 
   /departamentos:
@@ -488,9 +627,11 @@ components:
     Role:
       type: string
       enum: [admin, social_lead, technical_lead, project_supervisor]
+
     ProjectStatus:
       type: string
       enum: [active, paused, completed, cancelled]
+
     Departamento:
       type: object
       required: [id, nombre]
@@ -511,6 +652,17 @@ components:
         id: { type: integer, example: 100 }
         nombre: { type: string, example: El Alto }
         provinciaId: { type: integer, example: 10 }
+
+    EntidadPublica:
+      type: object
+      required: [id, nit, nombre, sigla]
+      properties:
+        id: { type: integer, example: 1 }
+        # Clave natural: cada entidad tiene un unico NIT institucional.
+        nit: { type: integer, format: int64, example: 192310023 }
+        nombre: { type: string, example: Agencia Estatal de Vivienda }
+        sigla: { type: string, example: AEVIVIENDA }
+
     User:
       type: object
       properties:
@@ -543,37 +695,35 @@ components:
         name: { type: string, maxLength: 150 }
         email: { type: string, format: email }
         password: { type: string, minLength: 8, maxLength: 128 }
-    Project:
+    Proyecto:
       type: object
+      required: [id, nombre, nroContrato, entidadPublicaId, usuarioNombre]
       properties:
         id: { type: string, format: uuid }
-        name: { type: string }
-        description: { type: string, nullable: true }
-        status: { $ref: '#/components/schemas/ProjectStatus' }
-        startDate: { type: string, format: date, nullable: true }
-        endDate: { type: string, format: date, nullable: true }
-        clientId: { type: string, format: uuid, nullable: true }
+        nombre: { type: string, example: Construccion de viviendas sociales - Fase I }
+        nroContrato: { type: string, example: AEV-2026-0042 }
+        entidadPublicaId: { type: integer, example: 2 }
+        # Nombre del usuario que registro el proyecto. Se toma de la sesion y no
+        # es editable. El id del creador no se expone: para filtrar por el se usa
+        # el query param `usuarioId` de GET /proyectos.
+        usuarioNombre: { type: string, example: Selena Gutierrez }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-    CreateProject:
+    CreateProyecto:
       type: object
-      required: [name]
+      required: [nombre, nroContrato, entidadPublicaId]
       properties:
-        name: { type: string, maxLength: 200 }
-        description: { type: string, nullable: true }
-        status: { $ref: '#/components/schemas/ProjectStatus' }
-        startDate: { type: string, format: date, nullable: true }
-        endDate: { type: string, format: date, nullable: true }
-        clientId: { type: string, format: uuid, nullable: true }
-    UpdateProject:
+        nombre: { type: string, maxLength: 200 }
+        nroContrato: { type: string, maxLength: 50 }
+        entidadPublicaId: { type: integer, minimum: 1 }
+    UpdateProyecto:
       type: object
+      minProperties: 1
       properties:
-        name: { type: string, maxLength: 200 }
-        description: { type: string, nullable: true }
-        status: { $ref: '#/components/schemas/ProjectStatus' }
-        startDate: { type: string, format: date, nullable: true }
-        endDate: { type: string, format: date, nullable: true }
-        clientId: { type: string, format: uuid, nullable: true }
+        nombre: { type: string, maxLength: 200 }
+        nroContrato: { type: string, maxLength: 50 }
+        entidadPublicaId: { type: integer, minimum: 1 }
+
 
   responses:
     ValidationError:
