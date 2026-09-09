@@ -5,7 +5,7 @@ Backend monorepo for Pentaclan Vivienda.
 - Node.js 22 LTS + TypeScript (ESM)
 - Express REST API
 - npm workspaces
-- MySQL/MariaDB via Sequelize
+- PostgreSQL via Sequelize
 - JWT authentication (access + refresh, hashed refresh tokens in DB)
 
 ## Layout
@@ -15,14 +15,18 @@ apps/
   api/             # Main backend (Express + Sequelize)
 packages/
   shared/          # Shared types/constants (@pentaclan/shared)
-docker-compose.yml # MariaDB for local development
+docker-compose.yml # PostgreSQL for local development
 ```
+
+> Si es tu primera vez con el proyecto, empieza por
+> [docs/SETUP.md](docs/SETUP.md): cubre el clone, los `.env`, Docker y el
+> frontend paso a paso.
 
 ## Prerequisites
 
 - Node.js 22.x
 - npm 10+
-- Docker (for the bundled MariaDB) or any MySQL/MariaDB 10.4+
+- Docker (for the bundled PostgreSQL) or any PostgreSQL 14+
 
 ## Setup
 
@@ -34,8 +38,8 @@ cp apps/api/.env.example apps/api/.env
 #   JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
 #   ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASSWORD
 
-# Start MariaDB
-docker compose up -d
+# Start PostgreSQL (reads DB_* from apps/api/.env)
+npm run db:up
 ```
 
 ## Database
@@ -49,6 +53,12 @@ npm run db:seed --workspace=apps/api
 
 # Rollback last migration
 npm run db:migrate:undo --workspace=apps/api
+
+# Stop the container (keeps the data volume)
+npm run db:down
+
+# Wipe the volume and start from an empty database
+npm run db:reset
 ```
 
 ## Develop
@@ -135,6 +145,7 @@ before adding a new module.
 | Projects  | Implemented (create/read/update, audited creator) |
 | Geography | Implemented (read-only catalog, seeded)      |
 | Public entities | Implemented (read-only catalog, seeded) |
+| Applications | Implemented (register/read/update/delete + approve/reject) |
 | Clients   | Placeholder (returns 501)                    |
 | Files     | Placeholder, S3 adapter scaffolded           |
 | Reports   | Placeholder (returns 501)                    |

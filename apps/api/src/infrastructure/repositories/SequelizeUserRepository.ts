@@ -69,10 +69,12 @@ export class SequelizeUserRepository implements UserRepository {
       conditions.push({ role: query.role });
     }
     if (query.search) {
+      // iLike y no like: en Postgres LIKE distingue mayusculas, a diferencia
+      // de MySQL, donde la collation por defecto ya las ignoraba.
       conditions.push({
         [Op.or]: [
-          { name: { [Op.like]: `%${query.search}%` } },
-          { email: { [Op.like]: `%${query.search}%` } },
+          { name: { [Op.iLike]: `%${query.search}%` } },
+          { email: { [Op.iLike]: `%${query.search}%` } },
         ],
       });
     }

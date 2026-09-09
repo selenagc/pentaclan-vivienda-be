@@ -7,8 +7,8 @@ const base = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 3306),
-  dialect: 'mysql',
+  port: Number(process.env.DB_PORT || 5432),
+  dialect: 'postgres',
   define: {
     underscored: true,
     freezeTableName: true,

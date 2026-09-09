@@ -15,7 +15,7 @@ export class MunicipalityModel extends Model<
 MunicipalityModel.init(
   {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
       field: 'id_municipality',
@@ -26,7 +26,7 @@ MunicipalityModel.init(
       field: 'municipality_name',
     },
     provinceId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       allowNull: false,
       field: 'id_province',
     },

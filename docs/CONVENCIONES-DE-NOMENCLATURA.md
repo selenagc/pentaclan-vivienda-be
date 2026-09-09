@@ -53,6 +53,38 @@ esta forma y no otra:
 | Sigla | `acronym` | `acronym` | |
 | Nombre | `name` | `<entidad>_name` | `project_name`, `entity_name`, … |
 | Usuario | `User` | `users` | Ya estaba en inglés |
+| Persona | `Person` | `people` | Plural irregular: **no** `persons` |
+| Postulación | `Application` | `applications` | Ruta: `/applications` |
+| Inmueble / Vivienda | `Property` | `properties` | Ruta: `/properties` |
+| Cónyuge | `spouse` | `id_spouse` | FK a `people`, auto-referencia |
+| Carnet / CI | `documentNo` | `document_no` | |
+| Expedido | `documentIssuedIn` | `document_issued_in` | `LP`, `CB`, `SC`, … |
+| Nombres | `givenNames` | `given_names` | |
+| Apellido paterno | `paternalSurname` | `paternal_surname` | |
+| Apellido materno | `maternalSurname` | `maternal_surname` | Opcional |
+| Fecha de nacimiento | `birthDate` | `birth_date` | `DATEONLY`, nunca la edad |
+| Sexo | `sex` | `sex` | |
+| Comunidad / Zona | `community` / `zone` | igual | |
+
+### Solicitante y beneficiario no son tablas
+
+No existe `applicants` ni `beneficiaries`, y no conviene crearlas. Son **dos
+estados de una misma postulación**:
+
+| Español | En el modelo |
+| --- | --- |
+| Solicitante | `Application` con `status = 'pending'` |
+| Beneficiario | La misma `Application` con `status = 'approved'` |
+
+Aprobar no mueve nada de tabla: cambia una columna. Por eso los rechazados
+siguen en el padrón con su motivo, que es requisito de auditoría del programa,
+y por eso la lista de beneficiarios de un proyecto es
+`GET /applications?projectId=…&status=approved` y no un endpoint aparte.
+
+La regla general que dejó este ticket: **si el estado nuevo no trae datos
+propios, es una columna, no una tabla**. Cuando aparezcan datos que sólo
+existen después de aprobar (fecha de obra, monto, contratista), ahí sí va una
+tabla que cuelga de la postulación aprobada.
 
 ## Reglas por capa
 
@@ -85,7 +117,7 @@ No es una inconsistencia, es deliberado y se mantiene:
 Al crear mandás una referencia; al leer recibís el dato resuelto, para que el
 front no tenga que consultar el catálogo por cada fila.
 
-## Trampas verificadas durante el renombre
+## Trampas verificadas en el esquema
 
 Cosas que ya rompieron una vez. Vale releerlas antes de tocar el esquema.
 
@@ -95,22 +127,70 @@ llama `tax_id`. Compila, pasa el typecheck, pasa los tests unitarios (que usan
 dobles en memoria) y revienta con 500 recién contra la base real. Después de
 renombrar columnas, hay que verificar cada `field:` contra el esquema.
 
-**2. MariaDB 10.4 no tiene `RENAME COLUMN` ni `RENAME INDEX`.**
-Llegaron en 10.5.2. Además rechaza con errno 1832 cualquier `CHANGE COLUMN`
-sobre una columna usada por una foreign key. El orden obligado es: soltar FK →
-renombrar tablas → renombrar columnas → drop+create de índices → rearmar FK.
-Está implementado así en `20260825000001-rename-domain-to-english.cjs`.
+El mismo error se repitió en `20260814000001-public-entities.cjs`, donde el
+renombre dejó `WHERE taxId = :taxId` y una clave `taxId` en el `bulkInsert`.
+Ahí no falló al momento porque nadie volvió a correr `db:seed` después del
+renombre: el bug quedó latente hasta que la base se recreó desde cero en
+PostgreSQL, varios commits después. El typecheck no lo ve (es SQL en un
+string) y los tests tampoco (usan dobles en memoria). **Después de un renombre
+masivo hay que recrear la base vacía y correr `db:migrate && db:seed` de punta
+a punta**, que es lo único que ejercita esos strings.
 
-**3. Las migraciones ya aplicadas no se editan.**
+**2. En PostgreSQL `LIKE` distingue mayúsculas de minúsculas.**
+En MySQL la collation por defecto las ignoraba, así que las búsquedas de
+`/users` y `/projects` funcionaban con `Op.like` por accidente. En Postgres el
+operador case-insensitive es `Op.iLike`. No falla ni tira error: simplemente
+devuelve menos resultados de los que debería, que es peor.
+
+**3. Postgres no tiene `INTEGER UNSIGNED` y trata el `ENUM` como tipo aparte.**
+Las PK de catálogo son `INTEGER` a secas (el rango positivo sobra igual). El
+`ENUM` de `role` vive en el esquema como `enum_users_role`, no dentro de la
+columna: un `dropTable` no se lo lleva, hay que hacer `DROP TYPE` explícito o
+el `up()` siguiente falla con *type already exists*.
+
+**4. Toda constraint e índice se nombra a mano.**
+Las FK creadas inline por `references` quedan con nombre autogenerado, y ese
+nombre depende del motor: `proyectos_ibfk_1` en MySQL, `proyectos_..._fkey` en
+Postgres. Cuando hubo que soltarlas, el nombre autogenerado obligó a reescribir
+una migración entera. En `20260830000001-initial-schema.cjs` se crean las
+tablas sin `references` inline y las FK se agregan después con
+`addConstraint({ name })`.
+
+**5. Las migraciones ya aplicadas no se editan.**
 Están registradas en `sequelizemeta`. Editarlas hace que en tu máquina no
 vuelvan a correr y en la de otro sí. El esquema ya aplicado se cambia con una
-migración nueva. Por eso las migraciones de PV-16/PV-19/PV-21 siguen creando
-tablas en español y la de renombre las traduce después.
+migración nueva.
 
-**4. `data` es una global reservada del sandbox de Postman.**
+La excepción fue el cambio de motor (PV-23): al pasar a PostgreSQL no había
+esquema previo que preservar, así que las 12 migraciones de MySQL se
+consolidaron en un solo baseline y quedaron archivadas en `db/_mysql-legacy/`
+como referencia. Fuera de un cambio de motor, la regla se mantiene.
+
+**6. `data` es una global reservada del sandbox de Postman.**
 `const data = ...` en un script de test tira
 `SyntaxError: Identifier 'data' has already been declared` bajo newman (en la
 app de Postman pasa desapercibido). Usar otro nombre.
+
+**7. `DECIMAL` vuelve de Postgres como `string`, no como `number`.**
+El driver `pg` serializa `numeric` a string para no perder precisión, aunque el
+modelo lo declare `number`. Sin un `Number()` explícito en el mapper, la API
+devuelve `"latitude": "-16.900000"` entre comillas y el front tiene que
+parsearlo. El typecheck no lo ve: TypeScript cree el `declare` del modelo. Se
+detectó en PV-30 con las coordenadas de `properties`.
+
+**8. `DATEONLY` no debe convertirse a `Date`.**
+Sequelize entrega `DATEONLY` como `'YYYY-MM-DD'` y así hay que dejarlo. Pasarlo
+por `new Date()` lo ancla a un huso horario: una fecha de nacimiento boliviana
+serializada a UTC se corre un día hacia atrás. Por eso `Person.birthDate` es
+`string` en la entidad, y el validator la comprueba con un patrón en vez de
+`Joi.date()`.
+
+**9. Con borrado lógico, los índices únicos van parciales.**
+En una tabla `paranoid`, un `UNIQUE` común sigue contando las filas borradas: un
+registro dado de baja seguiría reservando el CI de la persona y el cupo del
+inmueble, y no se podría volver a registrar. Los únicos de PV-30 llevan
+`WHERE deleted_at IS NULL`. Postgres soporta índices parciales; MySQL no los
+tenía, así que es un patrón nuevo desde PV-23.
 
 ## Cómo decidir un caso que esta tabla no cubre
 

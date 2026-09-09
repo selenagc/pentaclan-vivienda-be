@@ -5,7 +5,7 @@ import type { PublicEntityRepository } from '../../domain/repositories/PublicEnt
 function toPublicEntity(model: PublicEntityModel): PublicEntity {
   return {
     id: model.id,
-    // mysql2 devuelve BIGINT como string; el NIT cabe de sobra en un number.
+    // pg devuelve BIGINT como string; el NIT cabe de sobra en un number.
     taxId: Number(model.taxId),
     name: model.name,
     acronym: model.acronym,

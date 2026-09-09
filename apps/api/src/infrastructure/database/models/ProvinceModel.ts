@@ -15,7 +15,7 @@ export class ProvinceModel extends Model<
 ProvinceModel.init(
   {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
       field: 'id_province',
@@ -26,7 +26,7 @@ ProvinceModel.init(
       field: 'province_name',
     },
     departmentId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       allowNull: false,
       field: 'id_department',
     },

@@ -11,6 +11,15 @@ tags:
   - name: Auth
   - name: Users
   - name: Projects
+  - name: Applications
+    description: >-
+      Registro de solicitantes. "Solicitante" y "beneficiario" no son dos
+      recursos: son dos estados de una misma postulacion. La lista de
+      beneficiarios de un proyecto es GET /applications?status=approved.
+  - name: Properties
+    description: >-
+      Viviendas a mejorar. Solo lectura: el alta ocurre dentro del registro de
+      una postulacion. El listado alimenta el buscador del formulario.
   - name: Geography
     description: Catalogo geografico de Bolivia (datos maestros, solo lectura).
   - name: Public entities
@@ -390,6 +399,356 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /applications:
+    get:
+      tags: [Applications]
+      summary: List applications (paginated)
+      description: >-
+        Abierto a cualquier rol autenticado. Con `status=approved` devuelve los
+        beneficiarios del proyecto: no hay un endpoint aparte para ellos.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: sortBy
+          description: '`applicantName` ordena por apellido paterno del titular.'
+          schema:
+            type: string
+            enum: [submittedAt, status, createdAt, applicantName]
+            default: submittedAt
+        - in: query
+          name: sortOrder
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - in: query
+          name: search
+          description: Searches by given names, surnames and document number
+          schema: { type: string }
+        - in: query
+          name: projectId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          description: >-
+            Uno o varios estados, en OR. Admite un valor (`approved`), una lista
+            separada por comas (`pending,rejected`) o el parametro repetido.
+            Ausente no filtra.
+
+
+            Acepta varios porque las dos vistas del padron salen de aqui: los
+            beneficiarios son `approved` y los solicitantes son todos los demas.
+            Esa segunda lista no se puede armar filtrando en el cliente, porque
+            el total y las paginas los cuenta el servidor.
+          explode: false
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ApplicationStatus' }
+          style: form
+          examples:
+            beneficiarios:
+              summary: Los beneficiarios del proyecto
+              value: [approved]
+            solicitantes:
+              summary: Todos menos los aprobados
+              value: [pending, under_review, rejected, withdrawn]
+        - in: query
+          name: municipalityId
+          description: Filters by the municipality where the property is located
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Paginated list of applications
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Application' }
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Applications]
+      summary: Register an applicant — admin, social_lead and technical_lead
+      description: >-
+        Un solo formulario: crea persona, conyuge e inmueble junto con la
+        postulacion, en una sola transaccion. Si el CI ya esta registrado se
+        reutiliza esa persona en vez de fallar, para que el operador de campo
+        llene siempre lo mismo sin saber si ya existia.
+
+
+        `userId` y `status` no son editables: el primero sale de la sesion, el
+        segundo nace en `pending` y solo cambia al aprobar (PV-31). Enviarlos
+        devuelve 400.
+
+
+        La vivienda debe estar en el municipio donde se ejecuta el proyecto; si
+        no, la respuesta es 409. `project_supervisor` recibe 403.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterApplication' }
+      responses:
+        '201':
+          description: Application creada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /applications/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Applications]
+      summary: Get an application by id
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Application encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Applications]
+      summary: Update an application — admin, social_lead and technical_lead
+      description: >-
+        Permite corregir los datos anidados de persona e inmueble, que es lo que
+        pide el trabajo de campo. `spouse: null` desvincula al conyuge sin
+        borrar a esa persona.
+
+
+        No cambia el estado: aprobar o rechazar es otra operacion, con sus
+        propias reglas y auditoria (`POST /applications/{id}/approve` y
+        `/reject`). La vivienda no puede moverse fuera del municipio del
+        proyecto, ni siquiera editando.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateApplication' }
+      responses:
+        '200':
+          description: Application actualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Applications]
+      summary: Delete an application — admin only
+      description: >-
+        Borrado logico: la ficha sale de los listados pero queda en la base, que
+        es requisito de auditoria del programa. Una postulacion `approved` no se
+        borra (409): darla de baja es pasarla a `withdrawn`, que deja rastro.
+
+
+        Solo `admin`: un lider que se equivoca pide la baja, no la ejecuta.
+        Borrar la postulacion no borra a la persona ni al inmueble, que pueden
+        estar referenciados por otras.
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Application eliminada
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /applications/{id}/approve:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Applications]
+      summary: Approve an application — admin and project_supervisor
+      description: >-
+        Convierte al solicitante en beneficiario. La ficha no se mueve de tabla:
+        cambia `status` a `approved` y se sellan `decidedAt` y `decidedBy`, que
+        salen del reloj del servidor y de la sesion. A partir de aqui aparece en
+        `GET /applications?status=approved`.
+
+
+        Sin cuerpo. Mandar `status`, `decidedBy`, `decidedAt` o
+        `rejectionReason` devuelve 400.
+
+
+        Solo se decide sobre `pending` o `under_review`; sobre una ficha ya
+        decidida devuelve 409, porque reabrir una decision pisaria el rastro de
+        quien la tomo. El otro 409 es la regla anti doble beneficio: una sola
+        postulacion aprobada por vivienda y proyecto, asi que si el conyuge ya
+        fue aprobado por la misma casa, esta se rechaza nombrandolo.
+
+
+        Los dos lideres quedan fuera a proposito: registran fichas, no las
+        aprueban.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Application aprobada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /applications/{id}/reject:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Applications]
+      summary: Reject an application — admin and project_supervisor
+      description: >-
+        Deja la ficha en `rejected` con su motivo. El rechazado no desaparece de
+        la base: eso es lo que permite explicar la decision en una auditoria,
+        que es requisito de un programa con fondos publicos.
+
+
+        `rejectionReason` es obligatorio. Las mismas reglas de transicion que
+        `approve`: solo desde `pending` o `under_review`, si no 409.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectApplication' }
+      responses:
+        '200':
+          description: Application rechazada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /properties:
+    get:
+      tags: [Properties]
+      summary: List properties (paginated)
+      description: >-
+        Alimenta el buscador del formulario de registro. Al no haber codigo
+        catastral, que el operador encuentre y elija un inmueble ya registrado
+        es lo que evita cargar dos veces la misma vivienda fisica.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [community, zone, address, createdAt]
+            default: community
+        - in: query
+          name: sortOrder
+          schema: { type: string, enum: [asc, desc], default: asc }
+        - in: query
+          name: search
+          description: Searches by community, zone and address
+          schema: { type: string }
+        - in: query
+          name: municipalityId
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Paginated list of properties
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Property' }
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /departments:
     get:
       tags: [Geography]
@@ -677,6 +1036,198 @@ components:
         contractNo: { type: string, maxLength: 50 }
         publicEntityId: { type: integer, minimum: 1 }
         municipalityId: { type: integer, minimum: 1 }
+
+    # --- Registro de solicitantes (PV-30) ---
+
+    ApplicationStatus:
+      type: string
+      description: >-
+        Aqui vive la distincion solicitante/beneficiario: un beneficiario es una
+        postulacion en `approved`. PV-30 solo escribe `pending`; la transicion a
+        los demas estados es de PV-31.
+      enum: [pending, under_review, approved, rejected, withdrawn]
+      example: pending
+    DocumentIssuedIn:
+      type: string
+      description: Departamento donde se expidio el CI.
+      enum: [LP, CB, SC, OR, PT, TJ, CH, BE, PD]
+      example: LP
+    Sex:
+      type: string
+      enum: [M, F]
+    PersonData:
+      type: object
+      description: Datos propios de una persona, sin su conyuge.
+      required:
+        [id, documentNo, documentIssuedIn, givenNames, paternalSurname, birthDate, sex]
+      properties:
+        id: { type: string, format: uuid }
+        # CI + expedido son la clave natural: el numero solo es unico junto con
+        # el lugar de expedicion.
+        documentNo: { type: string, maxLength: 20, example: '4567890' }
+        documentIssuedIn: { $ref: '#/components/schemas/DocumentIssuedIn' }
+        givenNames: { type: string, maxLength: 150, example: Rosa Maria }
+        paternalSurname: { type: string, maxLength: 100, example: Condori }
+        maternalSurname:
+          type: string
+          maxLength: 100
+          nullable: true
+          example: Apaza
+        phone: { type: string, maxLength: 30, nullable: true }
+        occupation: { type: string, maxLength: 120, nullable: true }
+        # `date` y no `date-time`: la columna es DATEONLY. Convertirla a un
+        # instante la ancla a un huso horario y la corre un dia.
+        birthDate: { type: string, format: date, example: '1948-07-09' }
+        sex: { $ref: '#/components/schemas/Sex' }
+    Person:
+      allOf:
+        - $ref: '#/components/schemas/PersonData'
+        - type: object
+          properties:
+            # Persona completa y no cuatro campos sueltos: hacen falta su fecha
+            # de nacimiento y sexo para los cortes demograficos del programa.
+            spouse:
+              nullable: true
+              allOf: [{ $ref: '#/components/schemas/PersonData' }]
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    Property:
+      type: object
+      description: La vivienda a mejorar. El objeto real del programa.
+      required: [id, latitude, longitude, municipality]
+      properties:
+        id: { type: string, format: uuid }
+        # Los tres son opcionales porque en area rural la direccion suele ser
+        # solo la comunidad, pero al menos uno hace falta.
+        community: { type: string, maxLength: 150, nullable: true }
+        zone: { type: string, maxLength: 150, nullable: true }
+        address: { type: string, maxLength: 250, nullable: true }
+        latitude: { type: number, format: double, example: -16.5 }
+        longitude: { type: number, format: double, example: -68.16 }
+        municipality: { $ref: '#/components/schemas/ProjectMunicipality' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Application:
+      type: object
+      description: >-
+        Postulacion: quien, que vivienda, a que proyecto y en que estado. Nada
+        se mueve de tabla al aprobar, solo cambia `status`, y por eso los
+        rechazados siguen aqui con su motivo.
+      required: [id, status, submittedAt, person, property, project, userName]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/ApplicationStatus' }
+        # Fecha del formulario en campo, que no siempre es la de captura.
+        submittedAt: { type: string, format: date-time }
+        person: { $ref: '#/components/schemas/Person' }
+        # La vivienda se guarda en la postulacion y no se deriva de la persona:
+        # la misma persona puede postular a otro proyecto con otro inmueble.
+        property: { $ref: '#/components/schemas/Property' }
+        project:
+          type: object
+          required: [id, name, contractNo]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            contractNo: { type: string }
+        # Nombre del usuario que registro la ficha. Sale de la sesion.
+        userName: { type: string, example: Selena Gutierrez }
+        # Los tres quedan nulos mientras no se decide. Los llena PV-31.
+        decidedAt: { type: string, format: date-time, nullable: true }
+        decidedByName: { type: string, nullable: true }
+        rejectionReason: { type: string, maxLength: 500, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PersonInput:
+      type: object
+      description: >-
+        Obligatorios el documento, los nombres, la fecha de nacimiento y el
+        sexo: son la base de los cortes demograficos del programa y el dato ya
+        viene en el CI que se esta transcribiendo.
+      required: [documentNo, documentIssuedIn, givenNames, paternalSurname, birthDate, sex]
+      properties:
+        documentNo: { type: string, maxLength: 20 }
+        documentIssuedIn: { $ref: '#/components/schemas/DocumentIssuedIn' }
+        givenNames: { type: string, maxLength: 150 }
+        paternalSurname: { type: string, maxLength: 100 }
+        maternalSurname: { type: string, maxLength: 100, nullable: true }
+        phone: { type: string, maxLength: 30, nullable: true }
+        occupation: { type: string, maxLength: 120, nullable: true }
+        birthDate: { type: string, format: date }
+        sex: { $ref: '#/components/schemas/Sex' }
+    PropertyInput:
+      type: object
+      description: >-
+        Las coordenadas son obligatorias: sin codigo catastral son lo unico que
+        identifica fisicamente la vivienda, y hacen falta igual para planificar
+        la obra. Al menos uno entre `community` y `address`.
+      required: [latitude, longitude, municipalityId]
+      properties:
+        community: { type: string, maxLength: 150, nullable: true }
+        zone: { type: string, maxLength: 150, nullable: true }
+        address: { type: string, maxLength: 250, nullable: true }
+        latitude: { type: number, format: double, minimum: -90, maximum: 90 }
+        longitude: { type: number, format: double, minimum: -180, maximum: 180 }
+        # Debe coincidir con el municipality del proyecto, o la respuesta es 409.
+        municipalityId: { type: integer, minimum: 1 }
+    RegisterApplication:
+      type: object
+      description: >-
+        El inmueble entra de dos formas y solo una a la vez: `propertyId` cuando
+        el operador lo eligio del buscador, `property` cuando lo levanto en
+        campo. Mandar los dos, o ninguno, devuelve 400.
+      required: [projectId, person]
+      oneOf:
+        - required: [propertyId]
+        - required: [property]
+      properties:
+        projectId: { type: string, format: uuid }
+        person: { $ref: '#/components/schemas/PersonInput' }
+        # Nulo o ausente cuando el titular no tiene conyuge.
+        spouse:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/PersonInput' }]
+        propertyId: { type: string, format: uuid }
+        property: { $ref: '#/components/schemas/PropertyInput' }
+        # Fecha del formulario en campo. Por defecto, el momento de la captura.
+        submittedAt: { type: string, format: date-time }
+    UpdateApplication:
+      type: object
+      description: >-
+        `status`, `userId` y el bloque de decision no son editables. `spouse:
+        null` desvincula al conyuge sin borrar a esa persona.
+      minProperties: 1
+      properties:
+        person:
+          type: object
+          minProperties: 1
+          description: Campos sueltos de PersonInput, todos opcionales.
+        spouse:
+          nullable: true
+          allOf: [{ $ref: '#/components/schemas/PersonInput' }]
+        # Excluyente con `property`: uno cambia de inmueble, el otro corrige el
+        # actual.
+        propertyId: { type: string, format: uuid }
+        property:
+          type: object
+          minProperties: 1
+          description: Campos sueltos de PropertyInput, todos opcionales.
+        submittedAt: { type: string, format: date-time }
+
+    RejectApplication:
+      type: object
+      description: >-
+        El motivo es el unico campo de la decision que manda el cliente: quien
+        decide sale del token y la hora del servidor. Mandar `status`,
+        `decidedBy` o `decidedAt` devuelve 400.
+      required: [rejectionReason]
+      properties:
+        rejectionReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Por que se rechaza. Sin esto el rechazo no es auditable.
+          example: La vivienda no cumple el criterio de vulnerabilidad
 
 
   responses:

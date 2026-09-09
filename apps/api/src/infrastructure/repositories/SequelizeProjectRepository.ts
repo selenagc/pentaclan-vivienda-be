@@ -112,10 +112,12 @@ export class SequelizeProjectRepository implements ProjectRepository {
       conditions.push({ userId: query.userId });
     }
     if (query.search) {
+      // iLike y no like: en Postgres LIKE distingue mayusculas, a diferencia
+      // de MySQL, donde la collation por defecto ya las ignoraba.
       conditions.push({
         [Op.or]: [
-          { name: { [Op.like]: `%${query.search}%` } },
-          { contractNo: { [Op.like]: `%${query.search}%` } },
+          { name: { [Op.iLike]: `%${query.search}%` } },
+          { contractNo: { [Op.iLike]: `%${query.search}%` } },
         ],
       });
     }

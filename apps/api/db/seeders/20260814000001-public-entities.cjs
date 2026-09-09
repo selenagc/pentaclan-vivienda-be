@@ -17,7 +17,7 @@
  */
 const ENTIDADES = [
   {
-    taxId: 192310023,
+    tax_id: 192310023,
     entity_name: 'Agencia Estatal de Vivienda',
     acronym: 'AEVIVIENDA',
   },
@@ -29,8 +29,8 @@ module.exports = {
 
     for (const publicEntity of ENTIDADES) {
       const [rows] = await queryInterface.sequelize.query(
-        'SELECT id_public_entity AS id FROM public_entities WHERE taxId = :taxId LIMIT 1',
-        { replacements: { taxId: publicEntity.taxId } },
+        'SELECT id_public_entity AS id FROM public_entities WHERE tax_id = :taxId LIMIT 1',
+        { replacements: { taxId: publicEntity.tax_id } },
       );
 
       if (rows.length === 0) pending.push(publicEntity);
@@ -40,12 +40,12 @@ module.exports = {
       await queryInterface.bulkInsert('public_entities', pending);
     }
 
-    console.log(`[seed:publicEntities-publicas] insertadas ${pending.length} publicEntities.`);
+    console.log(`[seed:public-entities] insertadas ${pending.length} entidades.`);
   },
 
   async down(queryInterface) {
     await queryInterface.bulkDelete('public_entities', {
-      taxId: ENTIDADES.map((e) => e.taxId),
+      tax_id: ENTIDADES.map((e) => e.tax_id),
     });
   },
 };

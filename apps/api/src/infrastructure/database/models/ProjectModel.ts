@@ -41,12 +41,12 @@ ProjectModel.init(
       field: 'contract_no',
     },
     publicEntityId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       allowNull: false,
       field: 'id_public_entity',
     },
     municipalityId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       allowNull: false,
       field: 'id_municipality',
     },
