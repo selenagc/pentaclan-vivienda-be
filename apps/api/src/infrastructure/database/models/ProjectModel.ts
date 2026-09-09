@@ -1,8 +1,16 @@
-import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional, type NonAttribute } from 'sequelize';
+import {
+  DataTypes,
+  Model,
+  type InferAttributes,
+  type InferCreationAttributes,
+  type CreationOptional,
+  type NonAttribute,
+} from 'sequelize';
 import { sequelize } from '../sequelize.js';
 import type { UserModel } from './UserModel.js';
 import type { MunicipalityModel } from './MunicipalityModel.js';
 import type { PublicEntityModel } from './PublicEntityModel.js';
+import type { ProjectAssignmentModel } from './ProjectAssignmentModel.js';
 
 export class ProjectModel extends Model<
   InferAttributes<ProjectModel>,
@@ -19,6 +27,7 @@ export class ProjectModel extends Model<
   declare user?: NonAttribute<UserModel>;
   declare municipality?: NonAttribute<MunicipalityModel>;
   declare publicEntity?: NonAttribute<PublicEntityModel>;
+  declare assignments?: NonAttribute<ProjectAssignmentModel[]>;
 }
 
 ProjectModel.init(

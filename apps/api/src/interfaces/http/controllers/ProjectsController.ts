@@ -6,8 +6,10 @@ import { CreateProjectUseCase } from '../../../application/projects/CreateProjec
 import { GetProjectUseCase } from '../../../application/projects/GetProjectUseCase.js';
 import { ListProjectsUseCase } from '../../../application/projects/ListProjectsUseCase.js';
 import { UpdateProjectUseCase } from '../../../application/projects/UpdateProjectUseCase.js';
+import { ListAssignedProjectsUseCase } from '../../../application/projects/ListAssignedProjectsUseCase.js';
 import { asyncHandler } from '../../../shared/http/asyncHandler.js';
 import { buildPaginationMeta } from '../../../shared/http/pagination.js';
+import { ok } from '../../../shared/http/responses.js';
 import { UnauthorizedError } from '../../../shared/errors/UnauthorizedError.js';
 
 const repo = new SequelizeProjectRepository();
@@ -17,6 +19,7 @@ const createUseCase = new CreateProjectUseCase(repo, publicEntitiesRepo, geograp
 const getUseCase = new GetProjectUseCase(repo);
 const listUseCase = new ListProjectsUseCase(repo);
 const updateUseCase = new UpdateProjectUseCase(repo, publicEntitiesRepo, geographyRepo);
+const listAssignedUseCase = new ListAssignedProjectsUseCase(repo);
 
 export const index: RequestHandler = asyncHandler(async (req, res) => {
   const q = req.query as Record<string, string | undefined>;
@@ -58,4 +61,10 @@ export const show: RequestHandler = asyncHandler(async (req, res) => {
 export const update: RequestHandler = asyncHandler(async (req, res) => {
   const project = await updateUseCase.execute(req.params.id, req.body);
   res.status(200).json({ data: project, message: 'Project updated' });
+});
+
+export const listMyProjects: RequestHandler = asyncHandler(async (req, res) => {
+  if (!req.user) throw new UnauthorizedError();
+  const projects = await listAssignedUseCase.execute(req.user.id);
+  ok(res, projects);
 });
