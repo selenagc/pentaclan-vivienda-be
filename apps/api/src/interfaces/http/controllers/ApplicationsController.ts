@@ -10,6 +10,7 @@ import { ListApplicationsUseCase } from '../../../application/applications/ListA
 import { UpdateApplicationUseCase } from '../../../application/applications/UpdateApplicationUseCase.js';
 import { DeleteApplicationUseCase } from '../../../application/applications/DeleteApplicationUseCase.js';
 import { DecideApplicationUseCase } from '../../../application/applications/DecideApplicationUseCase.js';
+import { PreselectApplicationUseCase } from '../../../application/applications/PreselectApplicationUseCase.js';
 import { asyncHandler } from '../../../shared/http/asyncHandler.js';
 import { buildPaginationMeta } from '../../../shared/http/pagination.js';
 import { UnauthorizedError } from '../../../shared/errors/UnauthorizedError.js';
@@ -38,6 +39,7 @@ const updateUseCase = new UpdateApplicationUseCase(
 );
 const deleteUseCase = new DeleteApplicationUseCase(repo);
 const decideUseCase = new DecideApplicationUseCase(repo);
+const preselectUseCase = new PreselectApplicationUseCase(repo);
 
 export const index: RequestHandler = asyncHandler(async (req, res) => {
   // El validator ya normalizo `status` a un array de estados validos, venga
@@ -152,4 +154,22 @@ export const reject: RequestHandler = asyncHandler(async (req, res) => {
     rejectionReason: req.body.rejectionReason,
   });
   res.status(200).json({ data: application, message: 'Application rejected' });
+});
+
+/**
+ * Preseleccionar la postulacion (PV-37). Pasa a 'under_review' tras la evaluacion de campo.
+ */
+export const preselect: RequestHandler = asyncHandler(async (req, res) => {
+  if (!req.user) throw new UnauthorizedError();
+
+  if (req.user.role === 'social_lead' || req.user.role === 'technical_lead') {
+    const currentApp = await getUseCase.execute(req.params.id);
+    const isAssigned = await assignmentRepo.isUserAssignedToProject(req.user.id, currentApp.project.id);
+    if (!isAssigned) {
+      throw new ForbiddenError('No estás asignado al proyecto de esta postulación.');
+    }
+  }
+
+  const application = await preselectUseCase.execute(req.params.id);
+  res.status(200).json({ data: application, message: 'Application preselected' });
 });

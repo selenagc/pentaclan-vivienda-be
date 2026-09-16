@@ -147,6 +147,11 @@ export const approveApplicationSchema = Joi.object({
 });
 
 /**
+ * Preseleccionar no lleva cuerpo. Mandar campos de servidor devuelve 400.
+ */
+export const preselectApplicationSchema = Joi.object(decisionServerOwnedFields);
+
+/**
  * El motivo es obligatorio: un rechazo sin explicacion es una fila que nadie
  * puede justificar en una auditoria. 500 es el largo de la columna.
  */
