@@ -8,6 +8,18 @@ import { PropertyModel } from './models/PropertyModel.js';
 import { PersonModel } from './models/PersonModel.js';
 import { ApplicationModel } from './models/ApplicationModel.js';
 import { ProjectAssignmentModel } from './models/ProjectAssignmentModel.js';
+import { DiagnosticRecordModel } from './models/DiagnosticRecordModel.js';
+import { FamilyMemberModel } from './models/FamilyMemberModel.js';
+import { EvaluationQuestionModel } from './models/EvaluationQuestionModel.js';
+import { DiagnosticAnswerModel } from './models/DiagnosticAnswerModel.js';
+import { WaterConsumptionHabitModel } from './models/WaterConsumptionHabitModel.js';
+import { HousingHygieneModel } from './models/HousingHygieneModel.js';
+import { HealthConditionModel } from './models/HealthConditionModel.js';
+import { LandAccessibilityModel } from './models/LandAccessibilityModel.js';
+import { BasicUtilityModel } from './models/BasicUtilityModel.js';
+import { HousingCharacteristicModel } from './models/HousingCharacteristicModel.js';
+import { ConstructionElementModel } from './models/ConstructionElementModel.js';
+import { DiagnosticPhotoModel } from './models/DiagnosticPhotoModel.js';
 
 // Jerarquia del catalogo geografico: Departamento -> Provincia -> Municipio.
 // Se declara aqui (y no dentro de cada modelo) para evitar imports circulares.
@@ -201,3 +213,177 @@ ProjectModel.belongsToMany(UserModel, {
   otherKey: 'userId',
   as: 'assignedUsers',
 });
+
+// Ficha Diagnostico (PV-39)
+// 1:1 con la postulacion (id_application)
+ApplicationModel.hasOne(DiagnosticRecordModel, {
+  foreignKey: 'applicationId',
+  sourceKey: 'id',
+  as: 'diagnosticRecord',
+  onDelete: 'CASCADE',
+});
+DiagnosticRecordModel.belongsTo(ApplicationModel, {
+  foreignKey: 'applicationId',
+  targetKey: 'id',
+  as: 'application',
+});
+
+// Evaluadores tecnico y social
+UserModel.hasMany(DiagnosticRecordModel, {
+  foreignKey: 'technicalUserId',
+  sourceKey: 'id',
+  as: 'technicalEvaluations',
+  onDelete: 'SET NULL',
+});
+DiagnosticRecordModel.belongsTo(UserModel, {
+  foreignKey: 'technicalUserId',
+  targetKey: 'id',
+  as: 'technicalUser',
+});
+
+UserModel.hasMany(DiagnosticRecordModel, {
+  foreignKey: 'socialUserId',
+  sourceKey: 'id',
+  as: 'socialEvaluations',
+  onDelete: 'SET NULL',
+});
+DiagnosticRecordModel.belongsTo(UserModel, {
+  foreignKey: 'socialUserId',
+  targetKey: 'id',
+  as: 'socialUser',
+});
+
+// Relaciones 1:N de la ficha
+DiagnosticRecordModel.hasMany(FamilyMemberModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'familyMembers',
+  onDelete: 'CASCADE',
+});
+FamilyMemberModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+DiagnosticRecordModel.hasMany(DiagnosticAnswerModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'answers',
+  onDelete: 'CASCADE',
+});
+DiagnosticAnswerModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+EvaluationQuestionModel.hasMany(DiagnosticAnswerModel, {
+  foreignKey: 'evaluationQuestionId',
+  sourceKey: 'id',
+  as: 'answers',
+  onDelete: 'RESTRICT',
+});
+DiagnosticAnswerModel.belongsTo(EvaluationQuestionModel, {
+  foreignKey: 'evaluationQuestionId',
+  targetKey: 'id',
+  as: 'question',
+});
+
+DiagnosticRecordModel.hasMany(ConstructionElementModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'constructionElements',
+  onDelete: 'CASCADE',
+});
+ConstructionElementModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+DiagnosticRecordModel.hasMany(DiagnosticPhotoModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'photos',
+  onDelete: 'CASCADE',
+});
+DiagnosticPhotoModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+// Relaciones 1:1 de la ficha
+DiagnosticRecordModel.hasOne(WaterConsumptionHabitModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'waterHabits',
+  onDelete: 'CASCADE',
+});
+WaterConsumptionHabitModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+DiagnosticRecordModel.hasOne(HousingHygieneModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'hygiene',
+  onDelete: 'CASCADE',
+});
+HousingHygieneModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+DiagnosticRecordModel.hasOne(HealthConditionModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'health',
+  onDelete: 'CASCADE',
+});
+HealthConditionModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+DiagnosticRecordModel.hasOne(LandAccessibilityModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'landAccessibility',
+  onDelete: 'CASCADE',
+});
+LandAccessibilityModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+DiagnosticRecordModel.hasOne(BasicUtilityModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'basicUtilities',
+  onDelete: 'CASCADE',
+});
+BasicUtilityModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+
+DiagnosticRecordModel.hasOne(HousingCharacteristicModel, {
+  foreignKey: 'diagnosticRecordId',
+  sourceKey: 'id',
+  as: 'housingCharacteristics',
+  onDelete: 'CASCADE',
+});
+HousingCharacteristicModel.belongsTo(DiagnosticRecordModel, {
+  foreignKey: 'diagnosticRecordId',
+  targetKey: 'id',
+  as: 'diagnosticRecord',
+});
+

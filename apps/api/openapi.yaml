@@ -24,6 +24,9 @@ tags:
     description: Catalogo geografico de Bolivia (datos maestros, solo lectura).
   - name: Public entities
     description: Public entity catalog (master data, read-only).
+  - name: Diagnostics
+    description: Ficha de diagnóstico técnico y social (PV-39).
+
 
 paths:
   /health:
@@ -752,6 +755,112 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+  /applications/{id}/diagnostic:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Diagnostics]
+      summary: Get diagnostic record for an application
+      description: Returns the technical and social diagnostic record, including questions answers, construction elements, etc.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Diagnostic record retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    nullable: true
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /applications/{id}/diagnostic/technical:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Diagnostics]
+      summary: Save or update technical diagnosis — admin and technical_lead
+      description: Updates technical aspects (land accessibility, basic utilities, construction elements, photos, intervention suggestions).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Technical diagnosis saved
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /applications/{id}/diagnostic/social:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      tags: [Diagnostics]
+      summary: Save or update social diagnosis — admin and social_lead
+      description: Updates social aspects (family members, questionnaire answers, water consumption habits, hygiene, health conditions).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Social diagnosis saved
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /evaluation-questions:
+    get:
+      tags: [Diagnostics]
+      summary: Get active evaluation questions catalog
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Active evaluation questions list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        questionText: { type: string }
+                        category: { type: string, nullable: true }
+                        active: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /properties:
     get:
