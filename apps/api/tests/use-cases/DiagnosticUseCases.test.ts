@@ -95,6 +95,7 @@ function createMockDiagnosticRecord(overrides: Partial<DiagnosticRecord> = {}): 
     housingCharacteristics: null,
     constructionElements: [],
     photos: [],
+    changeHistory: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -215,6 +216,41 @@ describe('Diagnostic Record Use Cases', () => {
       expect(mockDiagnosticRepo.saveTechnical).toHaveBeenCalledWith('app-uuid-1', input, 'tech-user-1');
       expect(result).toEqual(savedRecord);
     });
+
+    it('saves technical diagnosis and includes changeHistory in response', async () => {
+      const app = createMockApplication({ status: 'under_review' });
+      mockApplicationRepo.findById.mockResolvedValue(app);
+
+      const input: TechnicalDiagnosticInput = {
+        requiresImprovement: true,
+        roomsToImprove: 'Baño y cocina',
+      };
+
+      const savedRecord = createMockDiagnosticRecord({
+        changeHistory: [
+          {
+            id: 'evt-1',
+            type: 'TECHNICAL',
+            action: 'INITIAL_SAVE',
+            performedById: 'tech-1',
+            performedByName: 'Ing. Carlos',
+            performedByRole: 'technical_lead',
+            timestamp: new Date().toISOString(),
+            summary: 'Registro inicial de la evaluación técnica',
+            changedFields: ['requiresImprovement', 'roomsToImprove'],
+            diff: null,
+          },
+        ],
+      });
+      mockDiagnosticRepo.saveTechnical.mockResolvedValue(savedRecord);
+
+      const useCase = new SaveTechnicalDiagnosisUseCase(mockDiagnosticRepo, mockApplicationRepo);
+      const result = await useCase.execute('app-uuid-1', input, 'tech-1');
+
+      expect(result.changeHistory).toHaveLength(1);
+      expect(result.changeHistory[0].action).toBe('INITIAL_SAVE');
+      expect(result.changeHistory[0].performedByName).toBe('Ing. Carlos');
+    });
   });
 
   describe('SaveSocialDiagnosisUseCase', () => {
@@ -269,6 +305,42 @@ describe('Diagnostic Record Use Cases', () => {
 
       expect(mockDiagnosticRepo.saveSocial).toHaveBeenCalledWith('app-uuid-1', input, 'soc-user-1');
       expect(result).toEqual(savedRecord);
+    });
+
+    it('saves social diagnosis and includes changeHistory in response', async () => {
+      const app = createMockApplication({ status: 'under_review' });
+      mockApplicationRepo.findById.mockResolvedValue(app);
+
+      const input: SocialDiagnosticInput = {
+        formNo: 'SOC-99',
+      };
+
+      const savedRecord = createMockDiagnosticRecord({
+        changeHistory: [
+          {
+            id: 'evt-2',
+            type: 'SOCIAL',
+            action: 'UPDATE',
+            performedById: 'soc-2',
+            performedByName: 'Lic. Carla',
+            performedByRole: 'social_lead',
+            timestamp: new Date().toISOString(),
+            summary: 'Modificación social por Lic. Carla (previamente evaluado por Lic. Andrea)',
+            changedFields: ['familyMembers'],
+            diff: {
+              familyMembers: { before: '3 miembros', after: '4 miembros' },
+            },
+          },
+        ],
+      });
+      mockDiagnosticRepo.saveSocial.mockResolvedValue(savedRecord);
+
+      const useCase = new SaveSocialDiagnosisUseCase(mockDiagnosticRepo, mockApplicationRepo);
+      const result = await useCase.execute('app-uuid-1', input, 'soc-2');
+
+      expect(result.changeHistory).toHaveLength(1);
+      expect(result.changeHistory[0].action).toBe('UPDATE');
+      expect(result.changeHistory[0].summary).toContain('previamente evaluado por Lic. Andrea');
     });
   });
 

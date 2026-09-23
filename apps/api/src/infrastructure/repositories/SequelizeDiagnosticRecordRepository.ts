@@ -1,7 +1,9 @@
 import type { Transaction, Includeable } from 'sequelize';
+import { v4 as uuidv4 } from 'uuid';
 import { sequelize } from '../database/sequelize.js';
 import { computeApplicationFormNo } from './SequelizeApplicationRepository.js';
 import { DiagnosticRecordModel } from '../database/models/DiagnosticRecordModel.js';
+import { UserModel } from '../database/models/UserModel.js';
 import { FamilyMemberModel } from '../database/models/FamilyMemberModel.js';
 import { EvaluationQuestionModel } from '../database/models/EvaluationQuestionModel.js';
 import { DiagnosticAnswerModel } from '../database/models/DiagnosticAnswerModel.js';
@@ -15,6 +17,8 @@ import { ConstructionElementModel } from '../database/models/ConstructionElement
 import { DiagnosticPhotoModel } from '../database/models/DiagnosticPhotoModel.js';
 import type {
   DiagnosticRecord,
+  DiagnosticChangeEntry,
+  DiagnosticDiffItem,
   EvaluationQuestion,
 } from '../../domain/entities/DiagnosticRecord.js';
 import type {
@@ -200,9 +204,127 @@ function toDiagnosticRecordEntity(model: DiagnosticRecordModel): DiagnosticRecor
       url: p.url,
       description: p.description,
     })),
+    changeHistory: (model.changeHistory as unknown as DiagnosticChangeEntry[]) ?? [],
     createdAt: model.createdAt,
     updatedAt: model.updatedAt,
   };
+}
+
+function buildTechnicalDiff(
+  oldRecord: DiagnosticRecordModel,
+  input: TechnicalDiagnosticInput,
+): { changedFields: string[]; diff: Record<string, DiagnosticDiffItem> } {
+  const changedFields: string[] = [];
+  const diff: Record<string, DiagnosticDiffItem> = {};
+
+  const scalarFields: (keyof TechnicalDiagnosticInput)[] = [
+    'requiresImprovement',
+    'requiresExpansion',
+    'requiresRenovation',
+    'roomsToImprove',
+    'bedroomSuggestion',
+    'livingRoomSuggestion',
+    'kitchenSuggestion',
+    'bathroomSuggestion',
+    'generalObservations',
+    'formNo',
+    'evaluationDate',
+  ];
+
+  for (const field of scalarFields) {
+    if (input[field] !== undefined) {
+      const oldVal = (oldRecord as any)[field] ?? null;
+      const newVal = input[field] ?? null;
+      if (oldVal !== newVal) {
+        changedFields.push(field);
+        diff[field] = { before: oldVal, after: newVal };
+      }
+    }
+  }
+
+  if (input.landAccessibility !== undefined) {
+    changedFields.push('landAccessibility');
+    diff['landAccessibility'] = { before: '(anterior)', after: '(actualizado)' };
+  }
+  if (input.basicUtilities !== undefined) {
+    changedFields.push('basicUtilities');
+    diff['basicUtilities'] = { before: '(anterior)', after: '(actualizado)' };
+  }
+  if (input.housingCharacteristics !== undefined) {
+    changedFields.push('housingCharacteristics');
+    diff['housingCharacteristics'] = { before: '(anterior)', after: '(actualizado)' };
+  }
+  if (input.constructionElements !== undefined) {
+    changedFields.push('constructionElements');
+    diff['constructionElements'] = {
+      before: `${oldRecord.constructionElements?.length ?? 0} elementos`,
+      after: `${input.constructionElements.length} elementos`,
+    };
+  }
+  if (input.photos !== undefined) {
+    changedFields.push('photos');
+    diff['photos'] = {
+      before: `${oldRecord.photos?.length ?? 0} fotos`,
+      after: `${input.photos.length} fotos`,
+    };
+  }
+
+  return { changedFields, diff };
+}
+
+function buildSocialDiff(
+  oldRecord: DiagnosticRecordModel,
+  input: SocialDiagnosticInput,
+): { changedFields: string[]; diff: Record<string, DiagnosticDiffItem> } {
+  const changedFields: string[] = [];
+  const diff: Record<string, DiagnosticDiffItem> = {};
+
+  if (input.formNo !== undefined && input.formNo !== (oldRecord.formNo ?? null)) {
+    changedFields.push('formNo');
+    diff['formNo'] = { before: oldRecord.formNo ?? null, after: input.formNo };
+  }
+  if (input.evaluationDate !== undefined && input.evaluationDate !== oldRecord.evaluationDate) {
+    changedFields.push('evaluationDate');
+    diff['evaluationDate'] = { before: oldRecord.evaluationDate, after: input.evaluationDate };
+  }
+  if (input.familyMembers !== undefined) {
+    changedFields.push('familyMembers');
+    diff['familyMembers'] = {
+      before: `${oldRecord.familyMembers?.length ?? 0} miembros`,
+      after: `${input.familyMembers.length} miembros`,
+    };
+  }
+  if (input.answers !== undefined) {
+    changedFields.push('answers');
+    diff['answers'] = {
+      before: `${oldRecord.answers?.length ?? 0} respuestas`,
+      after: `${input.answers.length} respuestas`,
+    };
+  }
+  if (
+    input.constructionKnowledgeObservations !== undefined &&
+    input.constructionKnowledgeObservations !== (oldRecord.constructionKnowledgeObservations ?? null)
+  ) {
+    changedFields.push('constructionKnowledgeObservations');
+    diff['constructionKnowledgeObservations'] = {
+      before: oldRecord.constructionKnowledgeObservations ?? null,
+      after: input.constructionKnowledgeObservations,
+    };
+  }
+  if (input.waterHabits !== undefined) {
+    changedFields.push('waterHabits');
+    diff['waterHabits'] = { before: '(anterior)', after: '(actualizado)' };
+  }
+  if (input.hygiene !== undefined) {
+    changedFields.push('hygiene');
+    diff['hygiene'] = { before: '(anterior)', after: '(actualizado)' };
+  }
+  if (input.health !== undefined) {
+    changedFields.push('health');
+    diff['health'] = { before: '(anterior)', after: '(actualizado)' };
+  }
+
+  return { changedFields, diff };
 }
 
 export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepository {
@@ -234,7 +356,27 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
 
       const today = new Date().toISOString().split('T')[0];
 
+      const actor = await UserModel.findByPk(userId, {
+        attributes: ['id', 'name', 'role'],
+        transaction: t,
+      });
+      const actorName = actor?.name ?? 'Usuario Técnico';
+      const actorRole = actor?.role ?? 'technical_lead';
+
       if (!record) {
+        const historyEntry: DiagnosticChangeEntry = {
+          id: uuidv4(),
+          type: 'TECHNICAL',
+          action: 'INITIAL_SAVE',
+          performedById: userId,
+          performedByName: actorName,
+          performedByRole: actorRole,
+          timestamp: new Date().toISOString(),
+          summary: `Registro inicial de la evaluación técnica por ${actorName}`,
+          changedFields: Object.keys(input).filter((k) => (input as any)[k] !== undefined),
+          diff: null,
+        };
+
         record = await DiagnosticRecordModel.create(
           {
             applicationId,
@@ -251,13 +393,57 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
             kitchenSuggestion: input.kitchenSuggestion ?? null,
             bathroomSuggestion: input.bathroomSuggestion ?? null,
             generalObservations: input.generalObservations ?? null,
+            changeHistory: [historyEntry],
           },
           { transaction: t },
         );
       } else {
+        const previousTechnicalUserId = record.technicalUserId;
+        const isInitialTechnical = !previousTechnicalUserId;
+
+        const { changedFields, diff } = isInitialTechnical
+          ? {
+              changedFields: Object.keys(input).filter((k) => (input as any)[k] !== undefined),
+              diff: null,
+            }
+          : buildTechnicalDiff(record, input);
+
+        let summary = `Registro inicial de la evaluación técnica por ${actorName}`;
+        if (!isInitialTechnical) {
+          if (previousTechnicalUserId && previousTechnicalUserId !== userId) {
+            const prevActor = await UserModel.findByPk(previousTechnicalUserId, {
+              attributes: ['name'],
+              transaction: t,
+            });
+            const prevName = prevActor?.name ?? 'otro evaluador';
+            summary = `Modificación técnica por ${actorName} (evaluación previa realizada por ${prevName})`;
+          } else {
+            summary = `Actualización de la evaluación técnica por ${actorName}`;
+          }
+        }
+
+        const historyEntry: DiagnosticChangeEntry = {
+          id: uuidv4(),
+          type: 'TECHNICAL',
+          action: isInitialTechnical ? 'INITIAL_SAVE' : 'UPDATE',
+          performedById: userId,
+          performedByName: actorName,
+          performedByRole: actorRole,
+          timestamp: new Date().toISOString(),
+          summary,
+          changedFields,
+          diff,
+        };
+
+        const currentHistory = Array.isArray(record.changeHistory)
+          ? [...(record.changeHistory as unknown as DiagnosticChangeEntry[])]
+          : [];
+        currentHistory.push(historyEntry);
+
         const updateData: Partial<DiagnosticRecordModel> = {
           technicalUserId: userId,
           formNo: computedFormNo ?? record.formNo,
+          changeHistory: currentHistory,
         };
 
         if (input.evaluationDate) updateData.evaluationDate = input.evaluationDate;
@@ -450,7 +636,27 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
 
       const today = new Date().toISOString().split('T')[0];
 
+      const actor = await UserModel.findByPk(userId, {
+        attributes: ['id', 'name', 'role'],
+        transaction: t,
+      });
+      const actorName = actor?.name ?? 'Usuario Social';
+      const actorRole = actor?.role ?? 'social_lead';
+
       if (!record) {
+        const historyEntry: DiagnosticChangeEntry = {
+          id: uuidv4(),
+          type: 'SOCIAL',
+          action: 'INITIAL_SAVE',
+          performedById: userId,
+          performedByName: actorName,
+          performedByRole: actorRole,
+          timestamp: new Date().toISOString(),
+          summary: `Registro inicial de la evaluación social por ${actorName}`,
+          changedFields: Object.keys(input).filter((k) => (input as any)[k] !== undefined),
+          diff: null,
+        };
+
         record = await DiagnosticRecordModel.create(
           {
             applicationId,
@@ -462,13 +668,57 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
             requiresImprovement: false,
             requiresExpansion: false,
             requiresRenovation: false,
+            changeHistory: [historyEntry],
           },
           { transaction: t },
         );
       } else {
+        const previousSocialUserId = record.socialUserId;
+        const isInitialSocial = !previousSocialUserId;
+
+        const { changedFields, diff } = isInitialSocial
+          ? {
+              changedFields: Object.keys(input).filter((k) => (input as any)[k] !== undefined),
+              diff: null,
+            }
+          : buildSocialDiff(record, input);
+
+        let summary = `Registro inicial de la evaluación social por ${actorName}`;
+        if (!isInitialSocial) {
+          if (previousSocialUserId && previousSocialUserId !== userId) {
+            const prevActor = await UserModel.findByPk(previousSocialUserId, {
+              attributes: ['name'],
+              transaction: t,
+            });
+            const prevName = prevActor?.name ?? 'otro evaluador';
+            summary = `Modificación social por ${actorName} (evaluación previa realizada por ${prevName})`;
+          } else {
+            summary = `Actualización de la evaluación social por ${actorName}`;
+          }
+        }
+
+        const historyEntry: DiagnosticChangeEntry = {
+          id: uuidv4(),
+          type: 'SOCIAL',
+          action: isInitialSocial ? 'INITIAL_SAVE' : 'UPDATE',
+          performedById: userId,
+          performedByName: actorName,
+          performedByRole: actorRole,
+          timestamp: new Date().toISOString(),
+          summary,
+          changedFields,
+          diff,
+        };
+
+        const currentHistory = Array.isArray(record.changeHistory)
+          ? [...(record.changeHistory as unknown as DiagnosticChangeEntry[])]
+          : [];
+        currentHistory.push(historyEntry);
+
         const updateData: Partial<DiagnosticRecordModel> = {
           socialUserId: userId,
           formNo: computedFormNo ?? record.formNo,
+          changeHistory: currentHistory,
         };
 
         if (input.evaluationDate) updateData.evaluationDate = input.evaluationDate;

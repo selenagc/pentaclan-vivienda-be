@@ -151,6 +151,28 @@ export interface DiagnosticRecord {
   constructionElements: ConstructionElement[];
   photos: DiagnosticPhoto[];
 
+  // Historial de cambios y auditoria (JSONB)
+  changeHistory: DiagnosticChangeEntry[];
+
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface DiagnosticDiffItem {
+  before: any;
+  after: any;
+}
+
+export interface DiagnosticChangeEntry {
+  id: string;
+  type: 'TECHNICAL' | 'SOCIAL';
+  action: 'INITIAL_SAVE' | 'UPDATE';
+  performedById: string;
+  performedByName: string;
+  performedByRole: string;
+  timestamp: string;
+  summary: string;
+  changedFields: string[];
+  diff?: Record<string, DiagnosticDiffItem> | null;
+}
+

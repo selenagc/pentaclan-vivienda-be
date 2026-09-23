@@ -1,4 +1,4 @@
-﻿import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional, type NonAttribute } from 'sequelize';
+import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional, type NonAttribute } from 'sequelize';
 import { sequelize } from '../sequelize.js';
 import type { UserModel } from './UserModel.js';
 import type { ApplicationModel } from './ApplicationModel.js';
@@ -37,6 +37,7 @@ export class DiagnosticRecordModel extends Model<
   declare bathroomSuggestion: CreationOptional<string | null>;
   declare generalObservations: CreationOptional<string | null>;
   declare constructionKnowledgeObservations: CreationOptional<string | null>;
+  declare changeHistory: CreationOptional<object[]>;
 
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -152,6 +153,12 @@ DiagnosticRecordModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'construction_knowledge_observations',
+    },
+    changeHistory: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
+      field: 'change_history',
     },
     createdAt: {
       type: DataTypes.DATE,
