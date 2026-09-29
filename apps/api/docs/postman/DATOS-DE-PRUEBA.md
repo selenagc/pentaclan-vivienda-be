@@ -663,8 +663,11 @@ La carpeta **Diagnostic Photos (S3)** automatiza el flujo completo de captura en
 3. **`3. POST /applications/:id/diagnostic/photos (Confirmar subida)`**:
    - Registra la fotografía en PostgreSQL usando el `{{photoS3Key}}` capturado.
    - Guarda automáticamente `{{photoId}}`.
-4. **`4. GET /applications/:id/diagnostic/photos`**:
+4. **`3b. POST /applications/:id/diagnostic/photos (1 Solo Paso - Multipart File)`**:
+   - Alternativa directa solicitada por el frontend: envía el archivo de imagen en el campo `image` (`multipart/form-data`) junto a los metadatos.
+   - El backend sube a S3 y registra en PostgreSQL en una sola petición.
+5. **`4. GET /applications/:id/diagnostic/photos`**:
    - Lista todas las fotos con URLs prefirmadas de lectura activas para renderizar en el navegador.
-5. **`5. DELETE /applications/:id/diagnostic/photos/:photoId`**:
+6. **`5. DELETE /applications/:id/diagnostic/photos/:photoId`**:
    - Elimina la foto tanto de PostgreSQL como del bucket de S3.
 

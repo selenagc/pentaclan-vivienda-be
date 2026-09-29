@@ -21,6 +21,7 @@ import {
   rejectApplicationSchema,
   updateApplicationSchema,
 } from '../validators/applications.validators.js';
+import { uploadSinglePhoto } from '../middlewares/uploadPhoto.js';
 import {
   showDiagnostic,
   saveTechnical,
@@ -34,7 +35,7 @@ import {
   technicalDiagnosticSchema,
   socialDiagnosticSchema,
   getPhotoUploadUrlSchema,
-  confirmPhotoUploadSchema,
+  createPhotoSchema,
   listPhotosQuerySchema,
   photoIdParamsSchema,
 } from '../validators/diagnostic.validators.js';
@@ -126,7 +127,8 @@ applicationsRouter.post(
 applicationsRouter.post(
   '/:id/diagnostic/photos',
   puedeRegistrar,
-  validate({ params: applicationIdParamsSchema, body: confirmPhotoUploadSchema }),
+  uploadSinglePhoto('image'),
+  validate({ params: applicationIdParamsSchema, body: createPhotoSchema }),
   confirmPhotoUpload,
 );
 applicationsRouter.get(

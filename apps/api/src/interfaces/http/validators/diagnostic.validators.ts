@@ -239,3 +239,25 @@ export const photoIdParamsSchema = Joi.object({
   id: Joi.string().uuid().required(),
   photoId: Joi.number().integer().positive().required(),
 });
+
+export const uploadPhotoMultipartSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: Joi.string().trim().max(100).required(),
+  capturedAt: Joi.date().iso().optional().default(() => new Date().toISOString()),
+  captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null, '').optional(),
+  captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null, '').optional(),
+  description: Joi.string().trim().max(255).allow(null, '').optional(),
+}).unknown(true);
+
+export const createPhotoSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: Joi.string().trim().max(100).required(),
+  s3Key: Joi.string().trim().max(500).optional(),
+  capturedAt: Joi.date().iso().optional().default(() => new Date().toISOString()),
+  captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null, '').optional(),
+  captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null, '').optional(),
+  mimeType: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').optional(),
+  fileSizeBytes: Joi.number().integer().min(1).max(20971520).optional(),
+  description: Joi.string().trim().max(255).allow(null, '').optional(),
+}).unknown(true);
+

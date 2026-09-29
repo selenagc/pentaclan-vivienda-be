@@ -1,5 +1,6 @@
 import { GetPhotoUploadUrlUseCase } from '../../src/application/diagnostics/GetPhotoUploadUrlUseCase.js';
 import { ConfirmPhotoUploadUseCase } from '../../src/application/diagnostics/ConfirmPhotoUploadUseCase.js';
+import { UploadDiagnosticPhotoUseCase } from '../../src/application/diagnostics/UploadDiagnosticPhotoUseCase.js';
 import { GetDiagnosticPhotosUseCase } from '../../src/application/diagnostics/GetDiagnosticPhotosUseCase.js';
 import { DeleteDiagnosticPhotoUseCase } from '../../src/application/diagnostics/DeleteDiagnosticPhotoUseCase.js';
 import type { ApplicationRepository } from '../../src/domain/repositories/ApplicationRepository.js';
@@ -20,6 +21,7 @@ import type {
 import { NotFoundError } from '../../src/shared/errors/NotFoundError.js';
 import { ConflictError } from '../../src/shared/errors/ConflictError.js';
 import { ForbiddenError } from '../../src/shared/errors/ForbiddenError.js';
+import { ValidationError } from '../../src/shared/errors/ValidationError.js';
 
 function createMockApplication(overrides: Partial<Application> = {}): Application {
   return {
@@ -434,4 +436,85 @@ describe('Diagnostic Photos & S3 Storage Use Cases', () => {
       );
     });
   });
+
+  describe('UploadDiagnosticPhotoUseCase (1 solo paso vía multipart)', () => {
+    it('uploads file buffer to S3, registers photo in DB and returns read URL', async () => {
+      const useCase = new UploadDiagnosticPhotoUseCase(
+        diagRepo,
+        appRepo as ApplicationRepository,
+        storage,
+      );
+
+      const fakeFile = {
+        buffer: Buffer.from('fake-image-binary-data'),
+        mimetype: 'image/jpeg',
+        size: 1024,
+        originalname: 'fachada.jpg',
+      };
+
+      const photo = await useCase.execute(
+        'app-uuid-1',
+        fakeFile,
+        {
+          category: 'technical',
+          photoType: 'Fachada Principal',
+          description: 'Foto en vivo subida en 1 solo paso',
+          captureLatitude: -16.5,
+          captureLongitude: -68.1,
+        },
+        'user-tech-1',
+        'technical_lead',
+      );
+
+      expect(photo.id).toBeDefined();
+      expect(photo.category).toBe('technical');
+      expect(photo.photoType).toBe('Fachada Principal');
+      expect(photo.s3Key).toMatch(/^diagnostics\/app-uuid-1\/technical\/[a-f0-9-]+\.jpg$/);
+      expect(photo.url).toContain('https://s3.mock/read/');
+      expect(diagRepo.photos).toHaveLength(1);
+    });
+
+    it('throws ValidationError if file is not provided', async () => {
+      const useCase = new UploadDiagnosticPhotoUseCase(
+        diagRepo,
+        appRepo as ApplicationRepository,
+        storage,
+      );
+
+      await expect(
+        useCase.execute(
+          'app-uuid-1',
+          undefined,
+          { category: 'technical', photoType: 'Fachada' },
+          'user-tech-1',
+          'technical_lead',
+        ),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('forbids technical_lead from uploading social photo', async () => {
+      const useCase = new UploadDiagnosticPhotoUseCase(
+        diagRepo,
+        appRepo as ApplicationRepository,
+        storage,
+      );
+
+      const fakeFile = {
+        buffer: Buffer.from('fake-image'),
+        mimetype: 'image/jpeg',
+        size: 500,
+      };
+
+      await expect(
+        useCase.execute(
+          'app-uuid-1',
+          fakeFile,
+          { category: 'social', photoType: 'Carnet' },
+          'user-tech-1',
+          'technical_lead',
+        ),
+      ).rejects.toThrow(ForbiddenError);
+    });
+  });
 });
+

@@ -2869,6 +2869,82 @@
           ]
         },
         {
+          "name": "3b. POST /applications/:id/diagnostic/photos (1 Solo Paso - Multipart File)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "category",
+                  "value": "technical",
+                  "type": "text"
+                },
+                {
+                  "key": "photoType",
+                  "value": "Fachada Principal",
+                  "type": "text"
+                },
+                {
+                  "key": "capturedAt",
+                  "value": "{{$isoTimestamp}}",
+                  "type": "text"
+                },
+                {
+                  "key": "captureLatitude",
+                  "value": "-16.502345",
+                  "type": "text"
+                },
+                {
+                  "key": "captureLongitude",
+                  "value": "-68.134567",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Foto en vivo subida en 1 solo paso con multipart",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}/diagnostic/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}",
+                "diagnostic",
+                "photos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Retorna foto creada con URL prefirmada', () => {",
+                  "  pm.expect(res.data.id).to.be.a('number');",
+                  "  pm.expect(res.data.url).to.be.a('string');",
+                  "});",
+                  "pm.environment.set('photoId', res.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "4. GET /applications/:id/diagnostic/photos",
           "request": {
             "method": "GET",

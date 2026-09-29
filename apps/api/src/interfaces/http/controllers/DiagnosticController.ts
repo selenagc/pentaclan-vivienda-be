@@ -9,6 +9,7 @@ import { SaveSocialDiagnosisUseCase } from '../../../application/diagnostics/Sav
 import { GetEvaluationQuestionsUseCase } from '../../../application/diagnostics/GetEvaluationQuestionsUseCase.js';
 import { GetPhotoUploadUrlUseCase } from '../../../application/diagnostics/GetPhotoUploadUrlUseCase.js';
 import { ConfirmPhotoUploadUseCase } from '../../../application/diagnostics/ConfirmPhotoUploadUseCase.js';
+import { UploadDiagnosticPhotoUseCase } from '../../../application/diagnostics/UploadDiagnosticPhotoUseCase.js';
 import { GetDiagnosticPhotosUseCase } from '../../../application/diagnostics/GetDiagnosticPhotosUseCase.js';
 import { DeleteDiagnosticPhotoUseCase } from '../../../application/diagnostics/DeleteDiagnosticPhotoUseCase.js';
 import { asyncHandler } from '../../../shared/http/asyncHandler.js';
@@ -32,6 +33,11 @@ const getQuestionsUseCase = new GetEvaluationQuestionsUseCase(diagnosticRepo);
 
 const getUploadUrlUseCase = new GetPhotoUploadUrlUseCase(applicationRepo, storageAdapter);
 const confirmPhotoUseCase = new ConfirmPhotoUploadUseCase(
+  diagnosticRepo,
+  applicationRepo,
+  storageAdapter,
+);
+const uploadPhotoDirectUseCase = new UploadDiagnosticPhotoUseCase(
   diagnosticRepo,
   applicationRepo,
   storageAdapter,
@@ -161,6 +167,38 @@ export const confirmPhotoUpload: RequestHandler = asyncHandler(async (req, res) 
     }
   }
 
+  // 1. Subida directa en 1 solo paso con archivo multipart/form-data
+  if (req.file) {
+    const photo = await uploadPhotoDirectUseCase.execute(
+      applicationId,
+      {
+        buffer: req.file.buffer,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        originalname: req.file.originalname,
+      },
+      {
+        category: req.body.category,
+        photoType: req.body.photoType,
+        capturedAt: req.body.capturedAt,
+        captureLatitude:
+          req.body.captureLatitude !== undefined && req.body.captureLatitude !== ''
+            ? Number(req.body.captureLatitude)
+            : null,
+        captureLongitude:
+          req.body.captureLongitude !== undefined && req.body.captureLongitude !== ''
+            ? Number(req.body.captureLongitude)
+            : null,
+        description: req.body.description,
+      },
+      req.user.id,
+      req.user.role,
+    );
+    res.status(201).json({ data: photo, message: 'Fotografía subida y registrada exitosamente' });
+    return;
+  }
+
+  // 2. Flujo de confirmación JSON vía s3Key
   const photo = await confirmPhotoUseCase.execute(
     applicationId,
     req.body,
