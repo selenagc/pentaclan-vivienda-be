@@ -91,7 +91,14 @@ export const technicalDiagnosticSchema = Joi.object({
       Joi.object({
         id: Joi.number().integer().optional(),
         photoType: Joi.string().trim().max(100).required(),
-        url: Joi.string().trim().max(500).required(),
+        s3Key: Joi.string().trim().max(500).optional(),
+        url: Joi.string().trim().max(500).optional(),
+        category: Joi.string().valid('technical', 'social').optional(),
+        capturedAt: Joi.date().iso().optional(),
+        captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null).optional(),
+        captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null).optional(),
+        mimeType: Joi.string().trim().max(50).optional(),
+        fileSizeBytes: Joi.number().integer().min(0).optional(),
         description: Joi.string().trim().max(255).allow(null, ''),
       }),
     )
@@ -204,4 +211,31 @@ export const socialDiagnosticSchema = Joi.object({
   })
     .allow(null)
     .optional(),
+});
+
+export const getPhotoUploadUrlSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: Joi.string().trim().max(100).required(),
+  mimeType: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').required(),
+});
+
+export const confirmPhotoUploadSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: Joi.string().trim().max(100).required(),
+  s3Key: Joi.string().trim().max(500).required(),
+  capturedAt: Joi.date().iso().required(),
+  captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null).optional(),
+  captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null).optional(),
+  mimeType: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').required(),
+  fileSizeBytes: Joi.number().integer().min(1).max(20971520).required(),
+  description: Joi.string().trim().max(255).allow(null, '').optional(),
+});
+
+export const listPhotosQuerySchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').optional(),
+});
+
+export const photoIdParamsSchema = Joi.object({
+  id: Joi.string().uuid().required(),
+  photoId: Joi.number().integer().positive().required(),
 });

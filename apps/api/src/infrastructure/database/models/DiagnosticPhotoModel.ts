@@ -1,4 +1,10 @@
-import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional } from 'sequelize';
+import {
+  DataTypes,
+  Model,
+  type InferAttributes,
+  type InferCreationAttributes,
+  type CreationOptional,
+} from 'sequelize';
 import { sequelize } from '../sequelize.js';
 
 export class DiagnosticPhotoModel extends Model<
@@ -7,8 +13,15 @@ export class DiagnosticPhotoModel extends Model<
 > {
   declare id: CreationOptional<number>;
   declare diagnosticRecordId: string;
+  declare category: CreationOptional<string>;
   declare photoType: string;
-  declare url: string;
+  declare s3Key: string;
+  declare capturedAt: CreationOptional<Date>;
+  declare captureLatitude: CreationOptional<number | null>;
+  declare captureLongitude: CreationOptional<number | null>;
+  declare mimeType: CreationOptional<string>;
+  declare fileSizeBytes: CreationOptional<number>;
+  declare url: CreationOptional<string | null>;
   declare description: CreationOptional<string | null>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -27,14 +40,53 @@ DiagnosticPhotoModel.init(
       allowNull: false,
       field: 'id_diagnostic_record',
     },
+    category: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      defaultValue: 'technical',
+      field: 'category',
+    },
     photoType: {
       type: DataTypes.STRING(100),
       allowNull: false,
       field: 'photo_type',
     },
-    url: {
+    s3Key: {
       type: DataTypes.STRING(500),
       allowNull: false,
+      field: 's3_key',
+    },
+    capturedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'captured_at',
+    },
+    captureLatitude: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
+      field: 'capture_latitude',
+    },
+    captureLongitude: {
+      type: DataTypes.DECIMAL(10, 7),
+      allowNull: true,
+      field: 'capture_longitude',
+    },
+    mimeType: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      defaultValue: 'image/jpeg',
+      field: 'mime_type',
+    },
+    fileSizeBytes: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'file_size_bytes',
+    },
+    url: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
       field: 'url',
     },
     description: {

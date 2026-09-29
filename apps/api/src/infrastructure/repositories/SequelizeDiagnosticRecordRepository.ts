@@ -17,12 +17,14 @@ import { ConstructionElementModel } from '../database/models/ConstructionElement
 import { DiagnosticPhotoModel } from '../database/models/DiagnosticPhotoModel.js';
 import type {
   DiagnosticRecord,
+  DiagnosticPhoto,
   DiagnosticChangeEntry,
   DiagnosticDiffItem,
   EvaluationQuestion,
 } from '../../domain/entities/DiagnosticRecord.js';
 import type {
   DiagnosticRecordRepository,
+  CreatePhotoInput,
   SocialDiagnosticInput,
   TechnicalDiagnosticInput,
 } from '../../domain/repositories/DiagnosticRecordRepository.js';
@@ -198,15 +200,35 @@ function toDiagnosticRecordEntity(model: DiagnosticRecordModel): DiagnosticRecor
         noImprovementNeeded: ce.noImprovementNeeded,
         observations: ce.observations,
       })),
-    photos: (model.photos ?? []).map((p) => ({
-      id: p.id,
-      photoType: p.photoType,
-      url: p.url,
-      description: p.description,
-    })),
+    photos: (model.photos ?? []).map(toDiagnosticPhotoEntity),
     changeHistory: (model.changeHistory as unknown as DiagnosticChangeEntry[]) ?? [],
     createdAt: model.createdAt,
     updatedAt: model.updatedAt,
+  };
+}
+
+function toDiagnosticPhotoEntity(p: DiagnosticPhotoModel): DiagnosticPhoto {
+  return {
+    id: p.id,
+    diagnosticRecordId: p.diagnosticRecordId,
+    category: (p.category as 'technical' | 'social') || 'technical',
+    photoType: p.photoType,
+    s3Key: p.s3Key,
+    url: p.url ?? undefined,
+    capturedAt: p.capturedAt,
+    captureLatitude:
+      p.captureLatitude !== null && p.captureLatitude !== undefined
+        ? Number(p.captureLatitude)
+        : null,
+    captureLongitude:
+      p.captureLongitude !== null && p.captureLongitude !== undefined
+        ? Number(p.captureLongitude)
+        : null,
+    mimeType: p.mimeType,
+    fileSizeBytes: p.fileSizeBytes,
+    description: p.description,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
   };
 }
 
@@ -592,18 +614,25 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
         }
       }
 
-      // 1:N Photos
+      // 1:N Photos (categoría técnica)
       if (input.photos !== undefined) {
         await DiagnosticPhotoModel.destroy({
-          where: { diagnosticRecordId },
+          where: { diagnosticRecordId, category: 'technical' },
           transaction: t,
         });
         if (input.photos.length > 0) {
           await DiagnosticPhotoModel.bulkCreate(
             input.photos.map((p) => ({
               diagnosticRecordId,
+              category: 'technical',
               photoType: p.photoType,
-              url: p.url,
+              s3Key: p.s3Key || p.url || '',
+              capturedAt: p.capturedAt ? new Date(p.capturedAt) : new Date(),
+              captureLatitude: p.captureLatitude ?? null,
+              captureLongitude: p.captureLongitude ?? null,
+              mimeType: p.mimeType ?? 'image/jpeg',
+              fileSizeBytes: p.fileSizeBytes ?? 0,
+              url: p.url ?? null,
               description: p.description ?? null,
             })),
             { transaction: t },
@@ -882,5 +911,90 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
       active: q.active,
     }));
   }
-}
 
+  async getOrCreateDiagnosticRecord(
+    applicationId: string,
+    _userId: string,
+  ): Promise<DiagnosticRecord> {
+    let record = await DiagnosticRecordModel.findOne({
+      where: { applicationId },
+      include: FULL_RECORD_INCLUDES,
+    });
+
+    if (!record) {
+      const today = new Date().toISOString().split('T')[0];
+      const created = await DiagnosticRecordModel.create({
+        applicationId,
+        evaluationDate: today,
+        requiresImprovement: false,
+        requiresExpansion: false,
+        requiresRenovation: false,
+        changeHistory: [],
+      });
+      record = await DiagnosticRecordModel.findByPk(created.id, {
+        include: FULL_RECORD_INCLUDES,
+      });
+    }
+
+    return toDiagnosticRecordEntity(record!);
+  }
+
+  async addPhoto(input: CreatePhotoInput): Promise<DiagnosticPhoto> {
+    const photo = await DiagnosticPhotoModel.create({
+      diagnosticRecordId: input.diagnosticRecordId,
+      category: input.category,
+      photoType: input.photoType,
+      s3Key: input.s3Key,
+      capturedAt:
+        typeof input.capturedAt === 'string' ? new Date(input.capturedAt) : input.capturedAt,
+      captureLatitude: input.captureLatitude ?? null,
+      captureLongitude: input.captureLongitude ?? null,
+      mimeType: input.mimeType,
+      fileSizeBytes: input.fileSizeBytes,
+      description: input.description ?? null,
+    });
+
+    return toDiagnosticPhotoEntity(photo);
+  }
+
+  async findPhotosByApplicationId(
+    applicationId: string,
+    category?: 'technical' | 'social',
+  ): Promise<DiagnosticPhoto[]> {
+    const record = await DiagnosticRecordModel.findOne({
+      where: { applicationId },
+      attributes: ['id'],
+    });
+
+    if (!record) {
+      return [];
+    }
+
+    const where: any = { diagnosticRecordId: record.id };
+    if (category) {
+      where.category = category;
+    }
+
+    const photos = await DiagnosticPhotoModel.findAll({
+      where,
+      order: [
+        ['capturedAt', 'DESC'],
+        ['id', 'DESC'],
+      ],
+    });
+
+    return photos.map(toDiagnosticPhotoEntity);
+  }
+
+  async findPhotoById(photoId: number): Promise<DiagnosticPhoto | null> {
+    const photo = await DiagnosticPhotoModel.findByPk(photoId);
+    if (!photo) return null;
+    return toDiagnosticPhotoEntity(photo);
+  }
+
+  async deletePhoto(photoId: number): Promise<void> {
+    await DiagnosticPhotoModel.destroy({
+      where: { id: photoId },
+    });
+  }
+}
