@@ -31,6 +31,22 @@ services:
     volumes:
       - minio_data:/data
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pentaclan-api
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:3000'
+    env_file:
+      - apps/api/.env
+    environment:
+      DB_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   minio_data:

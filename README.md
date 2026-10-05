@@ -61,6 +61,27 @@ npm run db:down
 npm run db:reset
 ```
 
+## Docker
+
+Para ejecutar la API en contenedores Docker:
+
+```bash
+# Construir y levantar PostgreSQL y la API
+npm run docker:up
+
+# Ver los logs del contenedor de la API
+docker logs -f pentaclan-api
+
+# Detener los contenedores
+npm run docker:down
+```
+
+O si prefieres construir la imagen directamente:
+
+```bash
+docker build -t pentaclan-api .
+```
+
 ## Develop
 
 ```bash

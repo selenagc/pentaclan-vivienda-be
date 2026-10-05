@@ -1,0 +1,42 @@
+# Dependencies & package caches
+node_modules
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+apps/*/dist
+packages/*/dist
+coverage
+
+# Environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Git & IDEs
+.git
+.gitignore
+.claude
+.vscode
+.idea
+
+# Documentation & Database dumps
+docs
+BD.sql
+*.md
+!README.md
+
+# Tests & Linting configs
+**/*.spec.ts
+**/*.test.ts
+**/tests
+.editorconfig
+.prettier*
+.eslint*
+jest.config.*
+tsconfig.tsbuildinfo
+
+# Legacy files
+apps/api/db/_mysql-legacy

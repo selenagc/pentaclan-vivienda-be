@@ -17,8 +17,10 @@
     "start": "npm run start --workspace=apps/api",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,js,json,md,yaml,yml}\"",
-    "test": "npm run test --workspace=apps/api",
-    "clean": "rimraf \"apps/*/dist\" \"packages/*/dist\""
+    "clean": "rimraf \"apps/*/dist\" \"packages/*/dist\"",
+    "docker:build": "docker build -t pentaclan-api .",
+    "docker:up": "docker compose --env-file apps/api/.env up -d --build postgres api",
+    "docker:down": "docker compose --env-file apps/api/.env down"
   },
   "devDependencies": {
     "eslint": "^9.17.0",
