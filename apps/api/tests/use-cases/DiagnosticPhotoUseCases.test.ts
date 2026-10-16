@@ -98,6 +98,10 @@ class MockStorageAdapter implements StorageAdapter {
     return this.getPresignedReadUrl(key);
   }
 
+  async getObjectBuffer(_key: string): Promise<{ buffer: Buffer; contentType?: string } | null> {
+    return null;
+  }
+
   async delete(key: string): Promise<void> {
     this.deletedKeys.push(key);
   }

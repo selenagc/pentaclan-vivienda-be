@@ -4,6 +4,9 @@ import { SequelizePublicEntityRepository } from '../../../infrastructure/reposit
 import { SequelizeGeographyRepository } from '../../../infrastructure/repositories/SequelizeGeographyRepository.js';
 import { SequelizeUserRepository } from '../../../infrastructure/repositories/SequelizeUserRepository.js';
 import { SequelizeProjectAssignmentRepository } from '../../../infrastructure/repositories/SequelizeProjectAssignmentRepository.js';
+import { SequelizeApplicationRepository } from '../../../infrastructure/repositories/SequelizeApplicationRepository.js';
+import { SequelizeDiagnosticRecordRepository } from '../../../infrastructure/repositories/SequelizeDiagnosticRecordRepository.js';
+import { S3StorageAdapter } from '../../../infrastructure/storage/S3StorageAdapter.js';
 import { CreateProjectUseCase } from '../../../application/projects/CreateProjectUseCase.js';
 import { GetProjectUseCase } from '../../../application/projects/GetProjectUseCase.js';
 import { ListProjectsUseCase } from '../../../application/projects/ListProjectsUseCase.js';
@@ -12,6 +15,7 @@ import { ListAssignedProjectsUseCase } from '../../../application/projects/ListA
 import { GetProjectAssignmentsUseCase } from '../../../application/projects/GetProjectAssignmentsUseCase.js';
 import { AssignUserToProjectUseCase } from '../../../application/projects/AssignUserToProjectUseCase.js';
 import { UnassignUserFromProjectUseCase } from '../../../application/projects/UnassignUserFromProjectUseCase.js';
+import { GenerateProjectPresentationUseCase } from '../../../application/projects/GenerateProjectPresentationUseCase.js';
 import { asyncHandler } from '../../../shared/http/asyncHandler.js';
 import { buildPaginationMeta } from '../../../shared/http/pagination.js';
 import { ok } from '../../../shared/http/responses.js';
@@ -23,6 +27,9 @@ const publicEntitiesRepo = new SequelizePublicEntityRepository();
 const geographyRepo = new SequelizeGeographyRepository();
 const userRepo = new SequelizeUserRepository();
 const assignmentRepo = new SequelizeProjectAssignmentRepository();
+const applicationRepo = new SequelizeApplicationRepository();
+const diagnosticRepo = new SequelizeDiagnosticRecordRepository();
+const storageAdapter = new S3StorageAdapter();
 
 const createUseCase = new CreateProjectUseCase(repo, publicEntitiesRepo, geographyRepo);
 const getUseCase = new GetProjectUseCase(repo);
@@ -32,6 +39,12 @@ const listAssignedUseCase = new ListAssignedProjectsUseCase(repo);
 const getAssignmentsUseCase = new GetProjectAssignmentsUseCase(repo, assignmentRepo);
 const assignUsersUseCase = new AssignUserToProjectUseCase(repo, userRepo, assignmentRepo);
 const unassignUserUseCase = new UnassignUserFromProjectUseCase(repo, assignmentRepo);
+const generatePresentationUseCase = new GenerateProjectPresentationUseCase(
+  repo,
+  applicationRepo,
+  diagnosticRepo,
+  storageAdapter,
+);
 
 export const index: RequestHandler = asyncHandler(async (req, res) => {
   // Si el usuario es evaluador técnico o social, únicamente puede consultar sus proyectos asignados
@@ -123,5 +136,24 @@ export const unassignUser: RequestHandler = asyncHandler(async (req, res) => {
     success: true,
     message: 'Asignación removida exitosamente',
   });
+});
+
+export const downloadPresentation: RequestHandler = asyncHandler(async (req, res) => {
+  if (req.user?.role === 'social_lead' || req.user?.role === 'technical_lead') {
+    const isAssigned = await assignmentRepo.isUserAssignedToProject(req.user.id, req.params.id);
+    if (!isAssigned) {
+      throw new ForbiddenError('No tienes autorización para acceder a este proyecto.');
+    }
+  }
+
+  const { buffer, fileName } = await generatePresentationUseCase.execute(req.params.id);
+
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  );
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+  res.status(200).send(buffer);
 });
 
