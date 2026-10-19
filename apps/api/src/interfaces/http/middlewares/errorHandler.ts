@@ -18,6 +18,13 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return fail(res, 400, 'VALIDATION_ERROR', 'Invalid request data', details);
   }
 
+  // body-parser: JSON mal formado. Trae `status` 400 propio, pero si no se
+  // atrapa aca cae al 500 generico y esconde el verdadero problema (tipico con
+  // una variable de Postman sin resolver en el body).
+  if (err instanceof SyntaxError && (err as { type?: string }).type === 'entity.parse.failed') {
+    return fail(res, 400, 'INVALID_JSON', 'Malformed JSON in request body');
+  }
+
   if (err instanceof UniqueConstraintError) {
     return fail(res, 409, 'CONFLICT', 'Resource already exists', err.errors.map((e) => ({
       path: e.path,

@@ -20,23 +20,23 @@ function ejecutar(middleware: ReturnType<typeof authorize>, req: Request): unkno
 }
 
 describe('authorize', () => {
-  it('deja pasar al rol permitido', () => {
+  it('lets the allowed role through', () => {
     const error = ejecutar(authorize('admin'), requestConRol('admin'));
     // next() sin argumento: la peticion continua.
     expect(error).toBeUndefined();
   });
 
-  it('rechaza con 403 a un rol autenticado pero no permitido', () => {
+  it('rejects with 403 an authenticated but not allowed role', () => {
     const error = ejecutar(authorize('admin'), requestConRol('technical_lead'));
     expect(error).toBeInstanceOf(ForbiddenError);
   });
 
-  it('rechaza con 401 si no hay usuario en la request', () => {
+  it('rejects with 401 when there is no user on the request', () => {
     const error = ejecutar(authorize('admin'), requestConRol());
     expect(error).toBeInstanceOf(UnauthorizedError);
   });
 
-  it('acepta cualquiera de los roles declarados', () => {
+  it('accepts any of the declared roles', () => {
     const middleware = authorize('admin', 'technical_lead');
     expect(ejecutar(middleware, requestConRol('admin'))).toBeUndefined();
     expect(ejecutar(middleware, requestConRol('technical_lead'))).toBeUndefined();

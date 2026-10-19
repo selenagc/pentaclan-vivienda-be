@@ -2,7 +2,7 @@ import { Sequelize } from 'sequelize';
 import { env } from '../../shared/config/env.js';
 
 export const sequelize = new Sequelize({
-  dialect: 'mysql',
+  dialect: 'postgres',
   host: env.DB_HOST,
   port: env.DB_PORT,
   database: env.DB_NAME,

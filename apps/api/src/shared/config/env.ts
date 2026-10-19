@@ -33,7 +33,7 @@ const schema = Joi.object<AppEnv>({
   PORT: Joi.number().integer().min(1).max(65535).default(3000),
 
   DB_HOST: Joi.string().required(),
-  DB_PORT: Joi.number().integer().min(1).max(65535).default(3306),
+  DB_PORT: Joi.number().integer().min(1).max(65535).default(5432),
   DB_NAME: Joi.string().required(),
   DB_USER: Joi.string().required(),
   DB_PASSWORD: Joi.string().allow('').required(),
