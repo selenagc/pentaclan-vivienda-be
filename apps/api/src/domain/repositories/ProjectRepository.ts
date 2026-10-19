@@ -27,4 +27,5 @@ export interface ProjectRepository {
   findByContractNo(contractNo: string): Promise<Project | null>;
   update(id: string, input: UpdateProjectInput): Promise<Project | null>;
   list(query: ListProjectsQuery): Promise<PageResult<Project>>;
+  findAssignedToUser(userId: string): Promise<Project[]>;
 }

@@ -399,6 +399,32 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /me/projects:
+    get:
+      tags: [Projects]
+      summary: List projects assigned to the authenticated user
+      description: >-
+        Devuelve unicamente los proyectos a los que el usuario autenticado tiene
+        acceso mediante asignacion activa (PV-35). Si no tiene proyectos asignados,
+        devuelve un arreglo vacio.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of assigned projects
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Project'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /applications:
     get:
       tags: [Applications]
@@ -1058,8 +1084,7 @@ components:
     PersonData:
       type: object
       description: Datos propios de una persona, sin su conyuge.
-      required:
-        [id, documentNo, documentIssuedIn, givenNames, paternalSurname, birthDate, sex]
+      required: [id, documentNo, documentIssuedIn, givenNames, paternalSurname, birthDate, sex]
       properties:
         id: { type: string, format: uuid }
         # CI + expedido son la clave natural: el numero solo es unico junto con
@@ -1228,7 +1253,6 @@ components:
           maxLength: 500
           description: Por que se rechaza. Sin esto el rechazo no es auditable.
           example: La vivienda no cumple el criterio de vulnerabilidad
-
 
   responses:
     ValidationError:

@@ -11,6 +11,7 @@ import { publicEntitiesRouter } from './public-entities.routes.js';
 import { clientsRouter } from './clients.routes.js';
 import { filesRouter } from './files.routes.js';
 import { reportsRouter } from './reports.routes.js';
+import { meRouter } from './me.routes.js';
 
 export const apiRouter = Router();
 
@@ -26,3 +27,4 @@ apiRouter.use('/public-entities', publicEntitiesRouter);
 apiRouter.use('/clients', clientsRouter);
 apiRouter.use('/files', filesRouter);
 apiRouter.use('/reports', reportsRouter);
+apiRouter.use('/me', meRouter);

@@ -10,3 +10,4 @@ export { PublicEntityModel } from './models/PublicEntityModel.js';
 export { PropertyModel } from './models/PropertyModel.js';
 export { PersonModel } from './models/PersonModel.js';
 export { ApplicationModel } from './models/ApplicationModel.js';
+export { ProjectAssignmentModel } from './models/ProjectAssignmentModel.js';

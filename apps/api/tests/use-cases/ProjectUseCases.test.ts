@@ -2,6 +2,7 @@ import { CreateProjectUseCase } from '../../src/application/projects/CreateProje
 import { GetProjectUseCase } from '../../src/application/projects/GetProjectUseCase.js';
 import { ListProjectsUseCase } from '../../src/application/projects/ListProjectsUseCase.js';
 import { UpdateProjectUseCase } from '../../src/application/projects/UpdateProjectUseCase.js';
+import { ListAssignedProjectsUseCase } from '../../src/application/projects/ListAssignedProjectsUseCase.js';
 import { ConflictError } from '../../src/shared/errors/ConflictError.js';
 import { NotFoundError } from '../../src/shared/errors/NotFoundError.js';
 import type {
@@ -56,6 +57,7 @@ const PUBLIC_ENTITIES: Record<number, ProjectPublicEntity> = {
 
 class InMemoryProjectRepository implements ProjectRepository {
   public readonly projects: Project[] = [];
+  public readonly assignments: Array<{ userId: string; projectId: string; active: boolean }> = [];
   private readonly creatorByProject = new Map<string, string>();
   private seq = 0;
 
@@ -112,6 +114,13 @@ class InMemoryProjectRepository implements ProjectRepository {
     }
     return { data, total: data.length };
   }
+
+  async findAssignedToUser(userId: string): Promise<Project[]> {
+    const assignedIds = new Set(
+      this.assignments.filter((a) => a.userId === userId && a.active).map((a) => a.projectId),
+    );
+    return this.projects.filter((p) => assignedIds.has(p.id));
+  }
 }
 
 /** Solo se usa `findById`; el resto satisface la interfaz. */
@@ -134,7 +143,6 @@ class StubPublicEntityRepository implements PublicEntityRepository {
   async findById(id: number): Promise<PublicEntity | null> {
     return this.ids.includes(id) ? this.build(id) : null;
   }
-
 }
 
 /** Solo se usa `municipioExists`; el resto satisface la interfaz. */
@@ -206,17 +214,17 @@ describe('Project use cases', () => {
   });
 
   it('fails with 404 when the funding public entity does not exist', async () => {
-    await expect(
-      create.execute({ ...baseDto, publicEntityId: 999 }),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(create.execute({ ...baseDto, publicEntityId: 999 })).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
     expect(repo.projects).toHaveLength(0);
   });
 
   it('fails with 409 when the contract number is already taken', async () => {
     await create.execute(baseDto);
-    await expect(
-      create.execute({ ...baseDto, name: 'Otro project' }),
-    ).rejects.toBeInstanceOf(ConflictError);
+    await expect(create.execute({ ...baseDto, name: 'Otro project' })).rejects.toBeInstanceOf(
+      ConflictError,
+    );
     expect(repo.projects).toHaveLength(1);
   });
 
@@ -262,9 +270,9 @@ describe('Project use cases', () => {
 
   it('fails with 404 when the update points to a missing public entity', async () => {
     const created = await create.execute(baseDto);
-    await expect(
-      update.execute(created.id, { publicEntityId: 999 }),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(update.execute(created.id, { publicEntityId: 999 })).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 
   it('allows fixing the municipality of the project', async () => {
@@ -307,5 +315,38 @@ describe('Project use cases', () => {
 
     expect(result.total).toBe(1);
     expect(result.data[0].municipality.name).toBe('Sacaba');
+  });
+
+  describe('ListAssignedProjectsUseCase (PV-35)', () => {
+    it('returns empty array when user has no projects assigned', async () => {
+      await create.execute(baseDto);
+      const listAssigned = new ListAssignedProjectsUseCase(repo);
+      const result = await listAssigned.execute(TECH_ID);
+      expect(result).toEqual([]);
+    });
+
+    it('returns only projects explicitly assigned to the user with active=true', async () => {
+      const p1 = await create.execute(baseDto);
+      const p2 = await create.execute({ ...baseDto, contractNo: 'AEV-2026-0043', name: 'Segundo' });
+      await create.execute({ ...baseDto, contractNo: 'AEV-2026-0044', name: 'Tercero' });
+
+      // Asignar p1 y p2 a TECH_ID, pero p2 inactivo
+      repo.assignments.push({ userId: TECH_ID, projectId: p1.id, active: true });
+      repo.assignments.push({ userId: TECH_ID, projectId: p2.id, active: false });
+
+      // Asignar p2 a ADMIN_ID activo
+      repo.assignments.push({ userId: ADMIN_ID, projectId: p2.id, active: true });
+
+      const listAssigned = new ListAssignedProjectsUseCase(repo);
+      const techResult = await listAssigned.execute(TECH_ID);
+
+      expect(techResult).toHaveLength(1);
+      expect(techResult[0].id).toBe(p1.id);
+      expect(techResult[0].name).toBe(baseDto.name);
+
+      const adminResult = await listAssigned.execute(ADMIN_ID);
+      expect(adminResult).toHaveLength(1);
+      expect(adminResult[0].id).toBe(p2.id);
+    });
   });
 });

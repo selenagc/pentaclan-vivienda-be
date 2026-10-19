@@ -202,7 +202,8 @@ class InMemoryApplicationRepository implements ApplicationRepository {
 
     application.status = input.status;
     application.decidedAt = input.decidedAt;
-    application.decidedByName = input.decidedBy === SUPERVISOR_ID ? 'Supervisora Pentaclan' : 'Desconocido';
+    application.decidedByName =
+      input.decidedBy === SUPERVISOR_ID ? 'Supervisora Pentaclan' : 'Desconocido';
     application.rejectionReason = input.rejectionReason;
     application.updatedAt = new Date();
 
@@ -215,7 +216,8 @@ class InMemoryApplicationRepository implements ApplicationRepository {
   ): Promise<Application | null> {
     return (
       this.applications.find(
-        (a) => a.property.id === propertyId && a.project.id === projectId && a.status === 'approved',
+        (a) =>
+          a.property.id === propertyId && a.project.id === projectId && a.status === 'approved',
       ) ?? null
     );
   }
@@ -303,6 +305,10 @@ class StubProjectRepository implements ProjectRepository {
 
   async list(): Promise<PageResult<Project>> {
     return { data: [], total: 0 };
+  }
+
+  async findAssignedToUser(): Promise<Project[]> {
+    return [];
   }
 }
 
@@ -435,9 +441,9 @@ describe('Application use cases', () => {
     });
 
     it('rejects sending both propertyId and property', async () => {
-      await expect(
-        register.execute({ ...baseDto, propertyId: 'prop-el-alto' }),
-      ).rejects.toThrow(ValidationError);
+      await expect(register.execute({ ...baseDto, propertyId: 'prop-el-alto' })).rejects.toThrow(
+        ValidationError,
+      );
     });
 
     it('rejects sending neither propertyId nor property', async () => {
@@ -614,7 +620,11 @@ describe('Application use cases', () => {
 
     it('allows only one approved application per property and project', async () => {
       // Marido y esposa postulan la misma casa: dos fichas pendientes es valido.
-      const first = await register.execute({ ...baseDto, propertyId: 'prop-el-alto', property: null });
+      const first = await register.execute({
+        ...baseDto,
+        propertyId: 'prop-el-alto',
+        property: null,
+      });
       const second = await register.execute({
         ...baseDto,
         person: spouse,
@@ -628,7 +638,11 @@ describe('Application use cases', () => {
     });
 
     it('names the existing beneficiary in that conflict', async () => {
-      const first = await register.execute({ ...baseDto, propertyId: 'prop-el-alto', property: null });
+      const first = await register.execute({
+        ...baseDto,
+        propertyId: 'prop-el-alto',
+        property: null,
+      });
       const second = await register.execute({
         ...baseDto,
         person: spouse,
@@ -642,7 +656,11 @@ describe('Application use cases', () => {
     });
 
     it('still lets the second application be rejected: only approval is capped', async () => {
-      const first = await register.execute({ ...baseDto, propertyId: 'prop-el-alto', property: null });
+      const first = await register.execute({
+        ...baseDto,
+        propertyId: 'prop-el-alto',
+        property: null,
+      });
       const second = await register.execute({
         ...baseDto,
         person: spouse,

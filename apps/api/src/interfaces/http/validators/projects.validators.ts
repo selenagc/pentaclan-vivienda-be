@@ -46,3 +46,14 @@ export const listProjectsQuerySchema = Joi.object({
   municipalityId,
   userId: uuid,
 });
+
+export const assignUsersSchema = Joi.object({
+  userId: uuid,
+  userIds: Joi.array().items(uuid).min(1),
+}).or('userId', 'userIds');
+
+export const projectUserParamsSchema = Joi.object({
+  id: uuid.required(),
+  userId: uuid.required(),
+});
+

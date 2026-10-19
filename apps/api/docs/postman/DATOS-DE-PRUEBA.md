@@ -71,12 +71,16 @@ es la unica entidad cargada. La cobertura departamental no se modela aqui.
 
 Contraseña de todos los no-admin: `Test1234!` (o el valor de `SEED_TEST_PASSWORD`).
 
-| Email                              | Rol                  | ¿Crea proyectos? | ¿Registra solicitantes? | ¿Aprueba/rechaza? | ¿Borra fichas? |
-| ---------------------------------- | -------------------- | ---------------- | ----------------------- | ----------------- | -------------- |
-| `admin@pentaclan.com`              | `admin`              | ✅ Sí            | ✅ Sí                   | ✅ Sí             | ✅ Sí          |
-| `technical_lead@pentaclan.com`     | `technical_lead`     | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         |
-| `social_lead@pentaclan.com`        | `social_lead`        | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         |
-| `project_supervisor@pentaclan.com` | `project_supervisor` | ❌ 403           | ❌ 403                  | ✅ Sí             | ❌ 403         |
+| Email                              | Rol                  | ¿Crea proyectos? | ¿Registra solicitantes? | ¿Aprueba/rechaza? | ¿Borra fichas? | Notas (PV-35) |
+| ---------------------------------- | -------------------- | ---------------- | ----------------------- | ----------------- | -------------- | ------------- |
+| `admin@pentaclan.com`              | `admin`              | ✅ Sí            | ✅ Sí                   | ✅ Sí             | ✅ Sí          | Creador de proyectos de demo |
+| `technical_lead@pentaclan.com`     | `technical_lead`     | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         | Asignado a `SEED-PV30-001` |
+| `social_lead@pentaclan.com`        | `social_lead`        | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         | Asignado a `SEED-PV30-001` y `SEED-PV32-001` |
+| `project_supervisor@pentaclan.com` | `project_supervisor` | ❌ 403           | ❌ 403                  | ✅ Sí             | ❌ 403         | Evaluaciones y aprobación |
+| `mariana.social@pentaclan.com`     | `social_lead`        | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         | Asignada a `SEED-PV35-001` (Sacaba) |
+| `carlos.social@pentaclan.com`      | `social_lead`        | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         | **Sin asignaciones** (prueba de retorno `[]`) |
+| `rodrigo.tech@pentaclan.com`       | `technical_lead`     | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         | Asignado a `SEED-PV32-001` y `SEED-PV35-001` |
+| `patricia.tech@pentaclan.com`      | `technical_lead`     | ❌ 403           | ✅ Sí                   | ❌ 403            | ❌ 403         | Asignación **inactiva** (`active=false`) |
 
 Los permisos no son los mismos en los dos módulos, y es a propósito. Crear un
 **proyecto** es un acto administrativo: solo `admin`. Registrar un
@@ -92,15 +96,26 @@ baja, no la ejecuta.
 
 ### Proyectos de demostración
 
-Los seeders dejan dos proyectos ya cargados, con el mismo módulo en dos momentos
-distintos del trámite. Están en municipios diferentes a propósito: es lo que
-hace visible el filtro `municipalityId`, que con un solo municipio no se puede
-probar.
+Los seeders dejan tres proyectos ya cargados, en diferentes municipios y momentos del trámite:
 
-| `contract_no`   | Municipio | Fichas                                        | Para qué sirve                      |
-| --------------- | --------- | --------------------------------------------- | ----------------------------------- |
-| `SEED-PV30-001` | El Alto   | 5 `pending`                                   | el padrón recién levantado, sin decidir |
-| `SEED-PV32-001` | Viacha    | 3 `approved`, 3 `pending`, 1 `rejected`       | el padrón ya resuelto               |
+| `contract_no`   | Municipio | Departamento | Fichas                                        | Para qué sirve                      |
+| --------------- | --------- | ------------ | --------------------------------------------- | ----------------------------------- |
+| `SEED-PV30-001` | El Alto   | La Paz       | 5 `pending`                                   | padrón recién levantado, sin decidir |
+| `SEED-PV32-001` | Viacha    | La Paz       | 3 `approved`, 3 `pending`, 1 `rejected`       | padrón ya resuelto                  |
+| `SEED-PV35-001` | Sacaba    | Cochabamba   | —                                             | nuevo proyecto para asignaciones N:M |
+
+### Asignaciones de proyectos y `GET /api/me/projects` (PV-35)
+
+El seeder `20260909000002-demo-project-assignments.cjs` siembra la tabla intermedia `project_assignments` con la siguiente matriz:
+
+| Usuario | Rol | Proyectos asignados | Estado | Resultado esperado en `GET /api/me/projects` |
+|---|---|---|---|---|
+| `social_lead@pentaclan.com` | `social_lead` | `SEED-PV30-001`, `SEED-PV32-001` | Activo | Retorna array con 2 proyectos |
+| `technical_lead@pentaclan.com` | `technical_lead` | `SEED-PV30-001` | Activo | Retorna array con 1 proyecto |
+| `mariana.social@pentaclan.com` | `social_lead` | `SEED-PV35-001` | Activo | Retorna array con 1 proyecto (Sacaba) |
+| `rodrigo.tech@pentaclan.com` | `technical_lead` | `SEED-PV32-001`, `SEED-PV35-001` | Activo | Retorna array con 2 proyectos |
+| `patricia.tech@pentaclan.com` | `technical_lead` | `SEED-PV30-001` | Inactivo (`active=false`) | Retorna array vacío `[]` (filtro `active = true`) |
+| `carlos.social@pentaclan.com` | `social_lead` | *(Ninguno)* | — | Retorna array vacío `[]` (criterio de aceptación) |
 
 En `SEED-PV32-001`, los 3 aprobados **son** los beneficiarios: aparecen en
 `GET /applications?status=approved` sin que exista ninguna tabla ni endpoint
@@ -115,7 +130,22 @@ conviven sin problema, pero aprobar la segunda devuelve 409 — es la regla anti
 doble beneficio del programa, y tenerla sembrada deja probarla sin fabricar
 datos a mano.
 
-Los dos seeders son idempotentes: se pueden volver a correr sin duplicar nada.
+### Gestión de Asignaciones y Control de Acceso por Proyecto (PV-35 Ampliado)
+
+Además de `GET /api/me/projects`, la API cuenta con gestión completa de asignaciones para `admin` y control de acceso a nivel de proyecto para evaluadores:
+
+1. **Endpoints de Asignación (Exclusivos para `admin`):**
+   * `GET /api/projects/:id/assignments`: Lista evaluadores activos asignados al proyecto con sus datos de usuario.
+   * `POST /api/projects/:id/assignments`: Asigna uno o más evaluadores al proyecto (`{ "userIds": ["<id>"] }`). Valida que tengan rol `social_lead` o `technical_lead`.
+   * `DELETE /api/projects/:id/assignments/:userId`: Da de baja la asignación de un evaluador en el proyecto.
+
+2. **Control de Acceso Estricto (Regla de negocio en Backend):**
+   * Los evaluadores (`social_lead` y `technical_lead`) **únicamente** pueden consultar y operar en los proyectos donde tienen una asignación activa en `project_assignments`.
+   * `GET /api/projects/:id`: Devuelve `403 Forbidden` si el evaluador no está asignado al proyecto.
+   * `GET /api/applications?projectId=:id`: Devuelve `403 Forbidden` si el evaluador consulta un proyecto ajeno.
+   * `GET /api/applications/:id`, `POST /api/applications`, `PUT /api/applications/:id`: Validan que el evaluador pertenezca al proyecto asociado a la postulación antes de permitir lectura o modificación.
+
+Todos los seeders son idempotentes: se pueden volver a correr sin duplicar nada.
 
 ## Orden de ejecución
 
@@ -285,6 +315,17 @@ Campos editables: `name`, `contractNo`, `publicEntityId`, `municipalityId`.
 ### 13. `DELETE /projects/:id`
 
 **Espera 404.** No existe endpoint de borrado (fuera de alcance en PV-21).
+
+### 14. `GET /api/me/projects` — proyectos asignados al usuario autenticado (PV-35)
+
+`{{baseUrl}}/api/me/projects` (también disponible como `{{baseUrl}}/me/projects`).
+
+Devuelve los proyectos asignados al usuario logueado mediante la tabla intermedia `project_assignments` con `active = true`.
+
+- **Caso Social Lead:** Autenticado como `social_lead@pentaclan.com`. **Espera 200 OK** y una lista con los proyectos a los que fue asignado (`SEED-PV30-001` y `SEED-PV32-001`), con su ubicación (`municipality`, `province`, `department`) y entidad pública ya resueltas.
+- **Caso sin asignaciones (criterio de aceptación):** Autenticado como `carlos.social@pentaclan.com`. **Espera 200 OK** y un arreglo vacío `[]`.
+- **Caso asignación inactiva:** `patricia.tech@pentaclan.com` está asignada con `active = false`. **Espera 200 OK** y `[]`.
+- **Caso sin sesión:** Sin header `Authorization`. **Espera 401 Unauthorized** con código `UNAUTHORIZED`.
 
 > **`POST /projects` deja `{{municipalityId}}` apuntando al municipio del
 > proyecto que acaba de crear.** Si escribes el municipio a mano en el cuerpo
