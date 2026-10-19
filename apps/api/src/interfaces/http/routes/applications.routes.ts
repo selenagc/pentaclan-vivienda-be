@@ -10,11 +10,13 @@ import {
   destroy,
   approve,
   reject,
+  preselect,
 } from '../controllers/ApplicationsController.js';
 import {
   applicationIdParamsSchema,
   approveApplicationSchema,
   listApplicationsQuerySchema,
+  preselectApplicationSchema,
   registerApplicationSchema,
   rejectApplicationSchema,
   updateApplicationSchema,
@@ -38,6 +40,10 @@ const puedeBorrar = authorize('admin');
 // publicos.
 const puedeDecidir = authorize('admin', 'project_supervisor');
 
+// Preseleccionar la postulacion (pasar a 'under_review') tras la evaluacion en campo.
+// Lo pueden hacer admin, supervisor, y los lideres asignados al proyecto.
+const puedePreseleccionar = authorize('admin', 'project_supervisor', 'social_lead', 'technical_lead');
+
 applicationsRouter.get('/', validate({ query: listApplicationsQuerySchema }), index);
 applicationsRouter.get('/:id', validate({ params: applicationIdParamsSchema }), show);
 applicationsRouter.post('/', puedeRegistrar, validate({ body: registerApplicationSchema }), store);
@@ -57,6 +63,12 @@ applicationsRouter.delete(
 // Rutas de accion y no un `PUT /:id` con `status`: aprobar cruza la frontera
 // entre solicitante y beneficiario, no corrige un campo del formulario. Ademas
 // asi cada transicion lleva su propio permiso y su propia validacion de cuerpo.
+applicationsRouter.post(
+  '/:id/preselect',
+  puedePreseleccionar,
+  validate({ params: applicationIdParamsSchema, body: preselectApplicationSchema }),
+  preselect,
+);
 applicationsRouter.post(
   '/:id/approve',
   puedeDecidir,

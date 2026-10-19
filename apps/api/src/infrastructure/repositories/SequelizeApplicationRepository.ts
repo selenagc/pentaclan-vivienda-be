@@ -259,6 +259,14 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
     return this.findById(id);
   }
 
+  async preselect(id: string): Promise<Application | null> {
+    const found = await ApplicationModel.findByPk(id);
+    if (!found) return null;
+
+    await found.update({ status: 'under_review' });
+    return this.findById(id);
+  }
+
   async findApprovedByPropertyAndProject(
     propertyId: string,
     projectId: string,

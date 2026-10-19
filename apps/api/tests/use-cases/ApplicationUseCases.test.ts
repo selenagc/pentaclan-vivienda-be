@@ -4,6 +4,7 @@ import { ListApplicationsUseCase } from '../../src/application/applications/List
 import { UpdateApplicationUseCase } from '../../src/application/applications/UpdateApplicationUseCase.js';
 import { DeleteApplicationUseCase } from '../../src/application/applications/DeleteApplicationUseCase.js';
 import { DecideApplicationUseCase } from '../../src/application/applications/DecideApplicationUseCase.js';
+import { PreselectApplicationUseCase } from '../../src/application/applications/PreselectApplicationUseCase.js';
 import { ConflictError } from '../../src/shared/errors/ConflictError.js';
 import { NotFoundError } from '../../src/shared/errors/NotFoundError.js';
 import { ValidationError } from '../../src/shared/errors/ValidationError.js';
@@ -210,6 +211,15 @@ class InMemoryApplicationRepository implements ApplicationRepository {
     return application;
   }
 
+  async preselect(id: string): Promise<Application | null> {
+    const application = this.applications.find((a) => a.id === id);
+    if (!application) return null;
+
+    application.status = 'under_review';
+    application.updatedAt = new Date();
+    return application;
+  }
+
   async findApprovedByPropertyAndProject(
     propertyId: string,
     projectId: string,
@@ -350,6 +360,7 @@ describe('Application use cases', () => {
   let get: GetApplicationUseCase;
   let list: ListApplicationsUseCase;
   let decide: DecideApplicationUseCase;
+  let preselect: PreselectApplicationUseCase;
 
   const baseDto = {
     projectId: PROJECT_EL_ALTO,
@@ -372,6 +383,7 @@ describe('Application use cases', () => {
     get = new GetApplicationUseCase(repo);
     list = new ListApplicationsUseCase(repo);
     decide = new DecideApplicationUseCase(repo);
+    preselect = new PreselectApplicationUseCase(repo);
   });
 
   describe('register', () => {
@@ -676,6 +688,55 @@ describe('Application use cases', () => {
 
     it('fails when the application does not exist', async () => {
       await expect(decide.execute('ghost', approval)).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe('preselect', () => {
+    it('transitions a pending application to under_review', async () => {
+      const created = await register.execute(baseDto);
+      expect(created.status).toBe('pending');
+
+      const preselected = await preselect.execute(created.id);
+      expect(preselected.status).toBe('under_review');
+
+      // Comprueba que tras ser preseleccionada, puede ser aprobada por el supervisor
+      const decided = await decide.execute(created.id, {
+        decision: 'approved',
+        decidedBy: SUPERVISOR_ID,
+      });
+      expect(decided.status).toBe('approved');
+    });
+
+    it('fails when the application does not exist', async () => {
+      await expect(preselect.execute('ghost')).rejects.toThrow(NotFoundError);
+    });
+
+    it('refuses to preselect an application that is already under_review', async () => {
+      const created = await register.execute(baseDto);
+      await preselect.execute(created.id);
+
+      await expect(preselect.execute(created.id)).rejects.toThrow(ConflictError);
+      await expect(preselect.execute(created.id)).rejects.toThrow(/already under_review/);
+    });
+
+    it('refuses to preselect an application that is already approved', async () => {
+      const created = await register.execute(baseDto);
+      await decide.execute(created.id, { decision: 'approved', decidedBy: SUPERVISOR_ID });
+
+      await expect(preselect.execute(created.id)).rejects.toThrow(ConflictError);
+      await expect(preselect.execute(created.id)).rejects.toThrow(/already approved/);
+    });
+
+    it('refuses to preselect an application that is already rejected', async () => {
+      const created = await register.execute(baseDto);
+      await decide.execute(created.id, {
+        decision: 'rejected',
+        decidedBy: SUPERVISOR_ID,
+        rejectionReason: 'fuera de area',
+      });
+
+      await expect(preselect.execute(created.id)).rejects.toThrow(ConflictError);
+      await expect(preselect.execute(created.id)).rejects.toThrow(/already rejected/);
     });
   });
 

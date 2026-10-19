@@ -631,6 +631,39 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /applications/{id}/preselect:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [Applications]
+      summary: Preselect an application — admin, project_supervisor, social_lead and technical_lead
+      description: >-
+        Pasa la postulación de `pending` a `under_review` (Preseleccionado) tras la
+        evaluación técnica o social en campo. Solo se puede preseleccionar sobre fichas
+        en estado `pending`; sobre otro estado devuelve 409. Para líderes técnicos y
+        sociales, valida que estén asignados al proyecto.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Application preseleccionada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/Application' }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /applications/{id}/approve:
     parameters:
       - in: path

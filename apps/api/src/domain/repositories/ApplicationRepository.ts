@@ -124,6 +124,8 @@ export interface ApplicationRepository {
   update(id: string, input: UpdateApplicationInput): Promise<Application | null>;
   /** Aplica la decision y sus tres campos de auditoria en una sola escritura. */
   decide(id: string, input: DecideApplicationInput): Promise<Application | null>;
+  /** Pasa la postulacion a estado 'under_review' (Preseleccionado) tras la evaluacion en campo. */
+  preselect(id: string): Promise<Application | null>;
   /**
    * Sostiene la regla anti doble beneficio antes de que salte el indice
    * `applications_property_project_approved_uq`: si la vivienda ya tiene un
