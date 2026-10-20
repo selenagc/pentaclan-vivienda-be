@@ -332,7 +332,13 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
     const direction = query.sort.sortOrder.toUpperCase();
     const order: Order =
       query.sort.sortBy === 'applicantName'
-        ? [[{ model: PersonModel, as: 'person' }, 'paternal_surname', direction]]
+        ? [
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('property.zone'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('property.community'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.paternal_surname'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.maternal_surname'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.given_names'))), direction],
+          ]
         : [[SORTABLE_FIELDS_MAP[query.sort.sortBy] ?? 'submitted_at', direction]];
 
     const { rows, count } = await ApplicationModel.findAndCountAll({

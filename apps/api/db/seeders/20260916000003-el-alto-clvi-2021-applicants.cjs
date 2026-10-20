@@ -435,7 +435,7 @@ const APPLICANTS = [
       document_no: '8410015',
       document_issued_in: 'LP',
       given_names: 'Edwin',
-      paternal_surname: 'villca',
+      paternal_surname: 'Villca',
       maternal_surname: 'Vargas',
       phone: '71890015',
       occupation: 'Tornero mecánico',
