@@ -527,8 +527,8 @@ module.exports = {
           await queryInterface.bulkInsert('housing_characteristics', [
             {
               id_diagnostic_record: idDiag,
-              housing_typology: 'Casa unifamiliar independiente',
-              tenure_status: 'Propietario(a) con Folio Real',
+              housing_typology: 'UNIFAMILIAR',
+              tenure_status: 'PROPIA',
               observations: 'Terreno saneado con registro catastral municipal.',
               created_at: now,
               updated_at: now,
