@@ -78,9 +78,9 @@ export const technicalDiagnosticSchema = Joi.object({
         windowsState: Joi.string().trim().max(50).allow(null, ''),
         electricalInstallation: Joi.string().trim().max(100).allow(null, ''),
         electricalInstallationState: Joi.string().trim().max(50).allow(null, ''),
-        canBeImproved: Joi.number().integer().min(0).max(1).optional(),
-        cannotBeImproved: Joi.number().integer().min(0).max(1).optional(),
-        noImprovementNeeded: Joi.number().integer().min(0).max(1).optional(),
+        canBeImproved: Joi.number().integer().min(0).max(10).optional(),
+        cannotBeImproved: Joi.number().integer().min(0).max(10).optional(),
+        noImprovementNeeded: Joi.number().integer().min(0).max(10).optional(),
         observations: Joi.string().trim().allow(null, ''),
       }),
     )
