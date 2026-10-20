@@ -1,5 +1,6 @@
 import type { Transaction, Includeable } from 'sequelize';
 import { sequelize } from '../database/sequelize.js';
+import { computeApplicationFormNo } from './SequelizeApplicationRepository.js';
 import { DiagnosticRecordModel } from '../database/models/DiagnosticRecordModel.js';
 import { FamilyMemberModel } from '../database/models/FamilyMemberModel.js';
 import { EvaluationQuestionModel } from '../database/models/EvaluationQuestionModel.js';
@@ -187,7 +188,12 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
       include: FULL_RECORD_INCLUDES,
     });
     if (!record) return null;
-    return toDiagnosticRecordEntity(record);
+    const entity = toDiagnosticRecordEntity(record);
+    const computedFormNo = await computeApplicationFormNo(applicationId);
+    if (computedFormNo) {
+      entity.formNo = computedFormNo;
+    }
+    return entity;
   }
 
   async saveTechnical(
@@ -196,6 +202,7 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
     userId: string,
   ): Promise<DiagnosticRecord> {
     return await sequelize.transaction(async (t: Transaction) => {
+      const computedFormNo = await computeApplicationFormNo(applicationId, t);
       let record = await DiagnosticRecordModel.findOne({
         where: { applicationId },
         transaction: t,
@@ -207,7 +214,7 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
         record = await DiagnosticRecordModel.create(
           {
             applicationId,
-            formNo: input.formNo ?? null,
+            formNo: computedFormNo ?? input.formNo ?? null,
             evaluationDate: input.evaluationDate || today,
             technicalUserId: userId,
             technicalCompletedAt: input.isCompleted ? new Date() : null,
@@ -226,9 +233,9 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
       } else {
         const updateData: Partial<DiagnosticRecordModel> = {
           technicalUserId: userId,
+          formNo: computedFormNo ?? record.formNo,
         };
 
-        if (input.formNo !== undefined) updateData.formNo = input.formNo;
         if (input.evaluationDate) updateData.evaluationDate = input.evaluationDate;
         if (input.isCompleted) updateData.technicalCompletedAt = new Date();
 
@@ -399,7 +406,9 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
         transaction: t,
       });
 
-      return toDiagnosticRecordEntity(refreshed!);
+      const entity = toDiagnosticRecordEntity(refreshed!);
+      if (computedFormNo) entity.formNo = computedFormNo;
+      return entity;
     });
   }
 
@@ -409,6 +418,7 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
     userId: string,
   ): Promise<DiagnosticRecord> {
     return await sequelize.transaction(async (t: Transaction) => {
+      const computedFormNo = await computeApplicationFormNo(applicationId, t);
       let record = await DiagnosticRecordModel.findOne({
         where: { applicationId },
         transaction: t,
@@ -420,7 +430,7 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
         record = await DiagnosticRecordModel.create(
           {
             applicationId,
-            formNo: input.formNo ?? null,
+            formNo: computedFormNo ?? input.formNo ?? null,
             evaluationDate: input.evaluationDate || today,
             socialUserId: userId,
             socialCompletedAt: input.isCompleted ? new Date() : null,
@@ -433,9 +443,9 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
       } else {
         const updateData: Partial<DiagnosticRecordModel> = {
           socialUserId: userId,
+          formNo: computedFormNo ?? record.formNo,
         };
 
-        if (input.formNo !== undefined) updateData.formNo = input.formNo;
         if (input.evaluationDate) updateData.evaluationDate = input.evaluationDate;
         if (input.isCompleted) updateData.socialCompletedAt = new Date();
 
@@ -552,7 +562,9 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
         transaction: t,
       });
 
-      return toDiagnosticRecordEntity(refreshed!);
+      const entity = toDiagnosticRecordEntity(refreshed!);
+      if (computedFormNo) entity.formNo = computedFormNo;
+      return entity;
     });
   }
 
