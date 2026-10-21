@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 /**
  * Ficha de Diagnostico Tecnico y Social (PV-39).
@@ -29,6 +29,7 @@ const FKS = [
   ['diagnostic_records', 'diagnostic_records_technical_user_fk', 'id_technical_user', 'users', 'id', 'SET NULL'],
   ['diagnostic_records', 'diagnostic_records_social_user_fk', 'id_social_user', 'users', 'id', 'SET NULL'],
   ['family_members', 'family_members_diagnostic_record_fk', 'id_diagnostic_record', 'diagnostic_records', 'id_diagnostic_record', 'CASCADE'],
+  ['family_members', 'family_members_person_fk', 'id_person', 'people', 'id_person', 'SET NULL'],
   ['diagnostic_answers', 'diagnostic_answers_diagnostic_record_fk', 'id_diagnostic_record', 'diagnostic_records', 'id_diagnostic_record', 'CASCADE'],
   ['diagnostic_answers', 'diagnostic_answers_question_fk', 'id_evaluation_question', 'evaluation_questions', 'id_evaluation_question', 'CASCADE'],
   ['water_consumption_habits', 'water_habits_diagnostic_record_fk', 'id_diagnostic_record', 'diagnostic_records', 'id_diagnostic_record', 'CASCADE'],
@@ -172,6 +173,10 @@ module.exports = {
         type: Sequelize.CHAR(36),
         allowNull: false,
       },
+      id_person: {
+        type: Sequelize.CHAR(36),
+        allowNull: true,
+      },
       full_name: {
         type: Sequelize.STRING(150),
         allowNull: false,
@@ -179,6 +184,22 @@ module.exports = {
       relationship: {
         type: Sequelize.STRING(100),
         allowNull: false,
+      },
+      document_no: {
+        type: Sequelize.STRING(30),
+        allowNull: true,
+      },
+      document_issued_in: {
+        type: Sequelize.STRING(50),
+        allowNull: true,
+      },
+      sex: {
+        type: Sequelize.CHAR(1),
+        allowNull: true,
+      },
+      birth_date: {
+        type: Sequelize.DATEONLY,
+        allowNull: true,
       },
       age: {
         type: Sequelize.INTEGER,

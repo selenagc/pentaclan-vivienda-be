@@ -107,9 +107,14 @@ export const socialDiagnosticSchema = Joi.object({
     .items(
       Joi.object({
         id: Joi.number().integer().optional(),
+        personId: Joi.string().trim().max(36).allow(null, '').optional(),
         fullName: Joi.string().trim().min(1).max(150).required(),
         relationship: Joi.string().trim().min(1).max(100).required(),
-        age: Joi.number().integer().min(0).max(130).allow(null),
+        documentNo: Joi.string().trim().max(30).allow(null, '').optional(),
+        documentIssuedIn: Joi.string().trim().max(50).allow(null, '').optional(),
+        sex: Joi.string().trim().valid('M', 'F').allow(null, '').optional(),
+        birthDate: dateString.allow(null, '').optional(),
+        age: Joi.number().integer().min(0).max(130).allow(null).optional(),
         occupation: Joi.string().trim().max(150).allow(null, ''),
         hasDisability: Joi.boolean().optional(),
         disabilityType: Joi.string().trim().max(150).allow(null, ''),

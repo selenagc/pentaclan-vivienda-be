@@ -402,8 +402,13 @@ module.exports = {
           await queryInterface.bulkInsert('family_members', [
             {
               id_diagnostic_record: idDiag,
-              full_name: `${appData.given} ${appData.paternal}`,
-              relationship: 'Jefe(a) de Hogar',
+              id_person: idPerson,
+              full_name: `${appData.given} ${appData.paternal} ${appData.maternal}`.trim(),
+              relationship: 'Solicitante',
+              document_no: appData.doc,
+              document_issued_in: appData.issued,
+              sex: appData.sex,
+              birth_date: appData.birth,
               age: 42,
               occupation: appData.occupation,
               has_disability: false,
@@ -414,8 +419,13 @@ module.exports = {
             },
             {
               id_diagnostic_record: idDiag,
+              id_person: null,
               full_name: `Rosa ${appData.paternal} Mamani`,
               relationship: 'Cónyuge / Conviviente',
+              document_no: `820010${i}`,
+              document_issued_in: appData.issued,
+              sex: 'F',
+              birth_date: '1987-06-14',
               age: 39,
               occupation: 'Labores de casa',
               has_disability: false,
@@ -426,8 +436,13 @@ module.exports = {
             },
             {
               id_diagnostic_record: idDiag,
+              id_person: null,
               full_name: `Kevin ${appData.paternal}`,
               relationship: 'Hijo(a)',
+              document_no: null,
+              document_issued_in: 'CERTIFICADO DE NACIMIENTO',
+              sex: 'M',
+              birth_date: '2014-05-10',
               age: 12,
               occupation: 'Estudiante',
               has_disability: i === 1, // El 2do solicitante con un hijo con discapacidad

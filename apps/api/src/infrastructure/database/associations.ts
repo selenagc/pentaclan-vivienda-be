@@ -265,6 +265,12 @@ FamilyMemberModel.belongsTo(DiagnosticRecordModel, {
   targetKey: 'id',
   as: 'diagnosticRecord',
 });
+FamilyMemberModel.belongsTo(PersonModel, {
+  foreignKey: 'personId',
+  targetKey: 'id',
+  as: 'person',
+  onDelete: 'SET NULL',
+});
 
 DiagnosticRecordModel.hasMany(DiagnosticAnswerModel, {
   foreignKey: 'diagnosticRecordId',

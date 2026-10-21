@@ -64,8 +64,13 @@ function toDiagnosticRecordEntity(model: DiagnosticRecordModel): DiagnosticRecor
     generalObservations: model.generalObservations,
     familyMembers: (model.familyMembers ?? []).map((fm) => ({
       id: fm.id,
+      personId: fm.personId ?? null,
       fullName: fm.fullName,
       relationship: fm.relationship,
+      documentNo: fm.documentNo ?? null,
+      documentIssuedIn: fm.documentIssuedIn ?? null,
+      sex: fm.sex ?? null,
+      birthDate: fm.birthDate ?? null,
       age: fm.age,
       occupation: fm.occupation,
       hasDisability: fm.hasDisability,
@@ -523,16 +528,36 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
         });
         if (input.familyMembers.length > 0) {
           await FamilyMemberModel.bulkCreate(
-            input.familyMembers.map((fm) => ({
-              diagnosticRecordId,
-              fullName: fm.fullName,
-              relationship: fm.relationship,
-              age: fm.age ?? null,
-              occupation: fm.occupation ?? null,
-              hasDisability: fm.hasDisability ?? false,
-              disabilityType: fm.disabilityType ?? null,
-              disabilityDocument: fm.disabilityDocument ?? null,
-            })),
+            input.familyMembers.map((fm) => {
+              let computedAge = fm.age ?? null;
+              if (fm.birthDate) {
+                const [y, m, d] = fm.birthDate.split('-').map(Number);
+                if (y && m && d) {
+                  const now = new Date();
+                  let years = now.getFullYear() - y;
+                  const monthDiff = now.getMonth() + 1 - m;
+                  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d)) {
+                    years -= 1;
+                  }
+                  computedAge = Math.max(0, years);
+                }
+              }
+              return {
+                diagnosticRecordId,
+                personId: fm.personId || null,
+                fullName: fm.fullName,
+                relationship: fm.relationship,
+                documentNo: fm.documentNo || null,
+                documentIssuedIn: fm.documentIssuedIn || null,
+                sex: fm.sex || null,
+                birthDate: fm.birthDate || null,
+                age: computedAge,
+                occupation: fm.occupation || null,
+                hasDisability: fm.hasDisability ?? false,
+                disabilityType: fm.disabilityType || null,
+                disabilityDocument: fm.disabilityDocument || null,
+              };
+            }),
             { transaction: t },
           );
         }
