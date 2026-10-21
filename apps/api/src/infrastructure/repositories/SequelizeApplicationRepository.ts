@@ -1,6 +1,8 @@
 import { Op, type Includeable, type Order, type Transaction, type WhereOptions } from 'sequelize';
 import { sequelize } from '../database/sequelize.js';
 import { ApplicationModel } from '../database/models/ApplicationModel.js';
+import { DiagnosticRecordModel } from '../database/models/DiagnosticRecordModel.js';
+import { FamilyMemberModel } from '../database/models/FamilyMemberModel.js';
 import { PersonModel } from '../database/models/PersonModel.js';
 import { PropertyModel } from '../database/models/PropertyModel.js';
 import { PROPERTY_INCLUDE, toPropertyEntity } from './SequelizePropertyRepository.js';
@@ -306,6 +308,24 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
       decidedById: input.decidedBy,
       rejectionReason: input.rejectionReason,
     });
+
+    if (input.status === 'approved') {
+      const diag = await DiagnosticRecordModel.findOne({ where: { applicationId: id } });
+      if (diag) {
+        await FamilyMemberModel.update(
+          { relationship: 'Beneficiario' },
+          {
+            where: {
+              diagnosticRecordId: diag.id,
+              [Op.or]: [
+                { personId: found.personId },
+                { relationship: { [Op.in]: ['Solicitante', 'Jefe(a) de Hogar'] } },
+              ],
+            },
+          },
+        );
+      }
+    }
 
     return this.findById(id);
   }

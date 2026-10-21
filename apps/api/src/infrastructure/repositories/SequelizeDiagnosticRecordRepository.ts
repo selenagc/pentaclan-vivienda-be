@@ -24,6 +24,7 @@ import type {
 } from '../../domain/repositories/DiagnosticRecordRepository.js';
 
 const FULL_RECORD_INCLUDES: Includeable[] = [
+  { association: 'application', attributes: ['id', 'status', 'personId'] },
   { association: 'technicalUser', attributes: ['id', 'name'] },
   { association: 'socialUser', attributes: ['id', 'name'] },
   { association: 'familyMembers' },
@@ -62,21 +63,36 @@ function toDiagnosticRecordEntity(model: DiagnosticRecordModel): DiagnosticRecor
     kitchenSuggestion: model.kitchenSuggestion,
     bathroomSuggestion: model.bathroomSuggestion,
     generalObservations: model.generalObservations,
-    familyMembers: (model.familyMembers ?? []).map((fm) => ({
-      id: fm.id,
-      personId: fm.personId ?? null,
-      fullName: fm.fullName,
-      relationship: fm.relationship,
-      documentNo: fm.documentNo ?? null,
-      documentIssuedIn: fm.documentIssuedIn ?? null,
-      sex: fm.sex ?? null,
-      birthDate: fm.birthDate ?? null,
-      age: fm.age,
-      occupation: fm.occupation,
-      hasDisability: fm.hasDisability,
-      disabilityType: fm.disabilityType,
-      disabilityDocument: fm.disabilityDocument,
-    })),
+    familyMembers: (model.familyMembers ?? []).map((fm) => {
+      const appStatus = (model as any).application?.status;
+      const appPersonId = (model as any).application?.personId;
+      const isHead =
+        (appPersonId && fm.personId === appPersonId) ||
+        fm.relationship === 'Solicitante' ||
+        fm.relationship === 'Beneficiario' ||
+        fm.relationship === 'Jefe(a) de Hogar';
+      const resolvedRelationship = isHead
+        ? appStatus === 'approved'
+          ? 'Beneficiario'
+          : 'Solicitante'
+        : fm.relationship;
+
+      return {
+        id: fm.id,
+        personId: fm.personId ?? null,
+        fullName: fm.fullName,
+        relationship: resolvedRelationship,
+        documentNo: fm.documentNo ?? null,
+        documentIssuedIn: fm.documentIssuedIn ?? null,
+        sex: fm.sex ?? null,
+        birthDate: fm.birthDate ?? null,
+        age: fm.age,
+        occupation: fm.occupation,
+        hasDisability: fm.hasDisability,
+        disabilityType: fm.disabilityType,
+        disabilityDocument: fm.disabilityDocument,
+      };
+    }),
     answers: (model.answers ?? []).map((a) => ({
       evaluationQuestionId: a.evaluationQuestionId,
       answerBoolean: a.answerBoolean,
