@@ -110,6 +110,7 @@ function toDiagnosticRecordEntity(model: DiagnosticRecordModel): DiagnosticRecor
     waterHabits: model.waterHabits
       ? {
           waterSource: model.waterHabits.waterSource,
+          waterSourceOther: model.waterHabits.waterSourceOther,
           containerClean: model.waterHabits.containerClean,
           containerStatus: model.waterHabits.containerStatus,
           waterTreatment: model.waterHabits.waterTreatment,
@@ -492,7 +493,9 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
             {
               diagnosticRecordId,
               waterSource: input.waterHabits.waterSource ?? null,
-              containerClean: input.waterHabits.containerClean ?? false,
+              waterSourceOther:
+                input.waterHabits.waterSource === 'OTROS' ? (input.waterHabits.waterSourceOther || null) : null,
+              containerClean: input.waterHabits.containerClean ?? null,
               containerStatus: input.waterHabits.containerStatus ?? null,
               waterTreatment: input.waterHabits.waterTreatment ?? null,
               otherDetails: input.waterHabits.otherDetails ?? null,

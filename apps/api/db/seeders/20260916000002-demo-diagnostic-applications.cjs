@@ -452,10 +452,10 @@ module.exports = {
           await queryInterface.bulkInsert('water_consumption_habits', [
             {
               id_diagnostic_record: idDiag,
-              water_source: 'Red pública dentro de la vivienda',
+              water_source: 'RED PUBLICA',
               container_clean: true,
-              container_status: 'Bueno (Limpio y con tapa)',
-              water_treatment: 'Hierve el agua',
+              container_status: 'ESTAN TAPADOS',
+              water_treatment: 'HIERVEN EL AGUA',
               other_details: 'Tanque de polietileno de 500 litros protegido',
               created_at: now,
               updated_at: now,

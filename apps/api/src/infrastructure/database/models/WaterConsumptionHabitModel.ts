@@ -7,6 +7,7 @@ export class WaterConsumptionHabitModel extends Model<
 > {
   declare diagnosticRecordId: string;
   declare waterSource: CreationOptional<string | null>;
+  declare waterSourceOther: CreationOptional<string | null>;
   declare containerClean: CreationOptional<boolean | null>;
   declare containerStatus: CreationOptional<string | null>;
   declare waterTreatment: CreationOptional<string | null>;
@@ -26,6 +27,11 @@ WaterConsumptionHabitModel.init(
       type: DataTypes.STRING(150),
       allowNull: true,
       field: 'water_source',
+    },
+    waterSourceOther: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+      field: 'water_source_other',
     },
     containerClean: {
       type: DataTypes.BOOLEAN,

@@ -140,10 +140,20 @@ export const socialDiagnosticSchema = Joi.object({
   constructionKnowledgeObservations: Joi.string().trim().allow(null, ''),
 
   waterHabits: Joi.object({
-    waterSource: Joi.string().trim().max(150).allow(null, ''),
-    containerClean: Joi.boolean().optional(),
-    containerStatus: Joi.string().trim().max(150).allow(null, ''),
-    waterTreatment: Joi.string().trim().max(150).allow(null, ''),
+    waterSource: Joi.string()
+      .trim()
+      .valid('VERTIENTE', 'ARROYO/QUEBRADA', 'COSECHA DE LLUVIA', 'PILETA PUBLICA', 'RIOS', 'RED PUBLICA', 'OTROS')
+      .allow(null, ''),
+    waterSourceOther: Joi.string().trim().max(150).allow(null, ''),
+    containerClean: Joi.boolean().allow(null).optional(),
+    containerStatus: Joi.string()
+      .trim()
+      .valid('ESTAN CUBIERTOS', 'ESTAN TAPADOS', 'ESTAN LIMPIOS', 'MAS/MENOS LIMPIOS', 'SUCIOS')
+      .allow(null, ''),
+    waterTreatment: Joi.string()
+      .trim()
+      .valid('FILTRAN EL AGUA', 'HIERVEN EL AGUA', 'CLORAN')
+      .allow(null, ''),
     otherDetails: Joi.string().trim().max(255).allow(null, ''),
   })
     .allow(null)
