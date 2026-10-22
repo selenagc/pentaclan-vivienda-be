@@ -165,6 +165,16 @@ const APPLICANTS_DATA = [
   },
 ];
 
+/** Edad cumplida a la fecha de hoy a partir de una fecha YYYY-MM-DD. */
+function ageFromBirthDate(birthDate) {
+  const birth = new Date(`${birthDate}T00:00:00`);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
 async function findOne(queryInterface, sql, replacements) {
   const [rows] = await queryInterface.sequelize.query(sql, { replacements });
   if (!rows || rows.length === 0) return null;
@@ -393,7 +403,8 @@ module.exports = {
 
         // Si tiene módulo social:
         if (hasSocial) {
-          // Composición familiar
+          // Composición familiar. Sin cónyuge: los solicitantes demo no la declaran
+          // en datos generales (id_spouse null) y el formulario la precarga desde ahí.
           await queryInterface.bulkInsert('family_members', [
             {
               id_diagnostic_record: idDiag,
@@ -404,25 +415,8 @@ module.exports = {
               document_issued_in: appData.issued,
               sex: appData.sex,
               birth_date: appData.birth,
-              age: 42,
+              age: ageFromBirthDate(appData.birth),
               occupation: appData.occupation,
-              has_disability: false,
-              disability_type: null,
-              disability_document: null,
-              created_at: now,
-              updated_at: now,
-            },
-            {
-              id_diagnostic_record: idDiag,
-              id_person: null,
-              full_name: `Rosa ${appData.paternal} Mamani`,
-              relationship: 'Cónyuge / Conviviente',
-              document_no: `820010${i}`,
-              document_issued_in: appData.issued,
-              sex: 'F',
-              birth_date: '1987-06-14',
-              age: 39,
-              occupation: 'Labores de casa',
               has_disability: false,
               disability_type: null,
               disability_document: null,
@@ -438,7 +432,7 @@ module.exports = {
               document_issued_in: 'CERTIFICADO DE NACIMIENTO',
               sex: 'M',
               birth_date: '2014-05-10',
-              age: 12,
+              age: ageFromBirthDate('2014-05-10'),
               occupation: 'Estudiante',
               has_disability: i === 1, // El 2do solicitante con un hijo con discapacidad
               disability_type: i === 1 ? 'Discapacidad física motriz' : null,
