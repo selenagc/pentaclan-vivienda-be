@@ -69,12 +69,25 @@ Para ejecutar la API en contenedores Docker:
 # Construir y levantar PostgreSQL y la API
 npm run docker:up
 
+# Aplicar las migraciones pendientes dentro del contenedor
+# (la imagen no las ejecuta al arrancar)
+npm run docker:migrate
+
 # Ver los logs del contenedor de la API
 docker logs -f pentaclan-api
 
 # Detener los contenedores
 npm run docker:down
 ```
+
+`docker:up` no levanta MinIO: solo hace falta para probar fotografías con un
+almacenamiento S3 local en vez de AWS. En ese caso levántalo con
+`docker compose --env-file apps/api/.env up -d minio` y configura
+`AWS_S3_ENDPOINT=http://minio:9000`, `AWS_S3_FORCE_PATH_STYLE=true` y las
+credenciales `MINIO_ROOT_*` como `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`.
+
+La API dentro del contenedor usa el puerto 3000: detén antes `npm run dev` si
+lo tienes corriendo.
 
 O si prefieres construir la imagen directamente:
 
