@@ -1,6 +1,8 @@
 import { Op, type Includeable, type Order, type Transaction, type WhereOptions } from 'sequelize';
 import { sequelize } from '../database/sequelize.js';
 import { ApplicationModel } from '../database/models/ApplicationModel.js';
+import { DiagnosticRecordModel } from '../database/models/DiagnosticRecordModel.js';
+import { FamilyMemberModel } from '../database/models/FamilyMemberModel.js';
 import { PersonModel } from '../database/models/PersonModel.js';
 import { PropertyModel } from '../database/models/PropertyModel.js';
 import { PROPERTY_INCLUDE, toPropertyEntity } from './SequelizePropertyRepository.js';
@@ -139,6 +141,54 @@ async function upsertPerson(
   return PersonModel.create({ ...input, spouseId }, { transaction: tx });
 }
 
+/**
+ * Calcula el número correlativo (1, 2, 3...) que le corresponde a una
+ * postulación dentro de su proyecto, siguiendo exactamente el mismo orden
+ * alfabético del padrón (Urbanización/Zona -> Apellidos -> Nombres):
+ * - Si la postulación está en estado `approved`, numera dentro de los
+ *   beneficiarios aprobados del proyecto (sin huecos por rechazados).
+ * - Si aún no está aprobada, numera dentro de la lista de solicitantes del
+ *   proyecto.
+ */
+export async function computeApplicationFormNo(
+  applicationId: string,
+  tx?: Transaction,
+): Promise<string | null> {
+  const target = await ApplicationModel.findByPk(applicationId, {
+    attributes: ['id', 'projectId', 'status'],
+    transaction: tx,
+  });
+  if (!target) return null;
+
+  const statusCondition: WhereOptions =
+    target.status === 'approved'
+      ? { status: 'approved' }
+      : { status: { [Op.ne]: 'approved' } };
+
+  const siblings = await ApplicationModel.findAll({
+    attributes: ['id'],
+    where: {
+      projectId: target.projectId,
+      ...statusCondition,
+    },
+    include: [
+      { association: 'person', attributes: [] },
+      { association: 'property', attributes: [] },
+    ],
+    order: [
+      [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('property.zone'))), 'ASC'],
+      [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('property.community'))), 'ASC'],
+      [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.paternal_surname'))), 'ASC'],
+      [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.maternal_surname'))), 'ASC'],
+      [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.given_names'))), 'ASC'],
+    ],
+    transaction: tx,
+  });
+
+  const index = siblings.findIndex((row) => row.id === applicationId);
+  return index >= 0 ? String(index + 1) : null;
+}
+
 export class SequelizeApplicationRepository implements ApplicationRepository {
   async register(input: RegisterApplicationInput): Promise<Application> {
     const id = await sequelize.transaction(async (tx) => {
@@ -179,7 +229,10 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
 
   async findById(id: string): Promise<Application | null> {
     const found = await ApplicationModel.findByPk(id, { include: INCLUDE_RELATIONS });
-    return found ? toEntity(found) : null;
+    if (!found) return null;
+    const entity = toEntity(found);
+    entity.formNo = await computeApplicationFormNo(id);
+    return entity;
   }
 
   async findByDocumentAndProject(
@@ -255,6 +308,24 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
       decidedById: input.decidedBy,
       rejectionReason: input.rejectionReason,
     });
+
+    if (input.status === 'approved') {
+      const diag = await DiagnosticRecordModel.findOne({ where: { applicationId: id } });
+      if (diag) {
+        await FamilyMemberModel.update(
+          { relationship: 'Beneficiario' },
+          {
+            where: {
+              diagnosticRecordId: diag.id,
+              [Op.or]: [
+                { personId: found.personId },
+                { relationship: { [Op.in]: ['Solicitante', 'Jefe(a) de Hogar'] } },
+              ],
+            },
+          },
+        );
+      }
+    }
 
     return this.findById(id);
   }
@@ -332,7 +403,13 @@ export class SequelizeApplicationRepository implements ApplicationRepository {
     const direction = query.sort.sortOrder.toUpperCase();
     const order: Order =
       query.sort.sortBy === 'applicantName'
-        ? [[{ model: PersonModel, as: 'person' }, 'paternal_surname', direction]]
+        ? [
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('property.zone'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('property.community'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.paternal_surname'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.maternal_surname'))), direction],
+            [sequelize.fn('UPPER', sequelize.fn('TRIM', sequelize.col('person.given_names'))), direction],
+          ]
         : [[SORTABLE_FIELDS_MAP[query.sort.sortBy] ?? 'submitted_at', direction]];
 
     const { rows, count } = await ApplicationModel.findAndCountAll({

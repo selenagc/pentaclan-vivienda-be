@@ -12,8 +12,10 @@ import { clientsRouter } from './clients.routes.js';
 import { filesRouter } from './files.routes.js';
 import { reportsRouter } from './reports.routes.js';
 import { meRouter } from './me.routes.js';
+import { evaluationQuestionsRouter } from './evaluation-questions.routes.js';
 
 export const apiRouter = Router();
+
 
 apiRouter.use('/health', healthRouter);
 apiRouter.use('/auth', authRouter);
@@ -28,3 +30,5 @@ apiRouter.use('/clients', clientsRouter);
 apiRouter.use('/files', filesRouter);
 apiRouter.use('/reports', reportsRouter);
 apiRouter.use('/me', meRouter);
+apiRouter.use('/evaluation-questions', evaluationQuestionsRouter);
+

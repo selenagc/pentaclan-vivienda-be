@@ -23,6 +23,8 @@ export interface ApplicationProject {
  */
 export interface Application {
   id: string;
+  /** Número correlativo automático dentro del proyecto (según lista de solicitantes o beneficiarios). */
+  formNo?: string | null;
   status: ApplicationStatus;
   /** Fecha del formulario en campo, que no siempre es la de captura. */
   submittedAt: Date;

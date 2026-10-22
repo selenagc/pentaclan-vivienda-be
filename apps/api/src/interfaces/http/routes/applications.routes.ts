@@ -21,6 +21,16 @@ import {
   rejectApplicationSchema,
   updateApplicationSchema,
 } from '../validators/applications.validators.js';
+import {
+  showDiagnostic,
+  saveTechnical,
+  saveSocial,
+} from '../controllers/DiagnosticController.js';
+import {
+  technicalDiagnosticSchema,
+  socialDiagnosticSchema,
+} from '../validators/diagnostic.validators.js';
+
 
 export const applicationsRouter = Router();
 
@@ -44,6 +54,15 @@ const puedeDecidir = authorize('admin', 'project_supervisor');
 // Lo pueden hacer admin, supervisor, y los lideres asignados al proyecto.
 const puedePreseleccionar = authorize('admin', 'project_supervisor', 'social_lead', 'technical_lead');
 
+// Evaluacion y ficha diagnostico (PV-39)
+// Lectura para los involucrados en el proyecto
+const puedeVerDiagnostico = authorize('admin', 'project_supervisor', 'technical_lead', 'social_lead');
+// Separacion estricta de roles:
+// El lider tecnico solo llena datos tecnicos/constructivos
+const puedeLlenarTecnico = authorize('admin', 'technical_lead');
+// El lider social solo llena datos sociales/demograficos
+const puedeLlenarSocial = authorize('admin', 'social_lead');
+
 applicationsRouter.get('/', validate({ query: listApplicationsQuerySchema }), index);
 applicationsRouter.get('/:id', validate({ params: applicationIdParamsSchema }), show);
 applicationsRouter.post('/', puedeRegistrar, validate({ body: registerApplicationSchema }), store);
@@ -60,7 +79,28 @@ applicationsRouter.delete(
   destroy,
 );
 
+// Ficha Diagnostico
+applicationsRouter.get(
+  '/:id/diagnostic',
+  puedeVerDiagnostico,
+  validate({ params: applicationIdParamsSchema }),
+  showDiagnostic,
+);
+applicationsRouter.put(
+  '/:id/diagnostic/technical',
+  puedeLlenarTecnico,
+  validate({ params: applicationIdParamsSchema, body: technicalDiagnosticSchema }),
+  saveTechnical,
+);
+applicationsRouter.put(
+  '/:id/diagnostic/social',
+  puedeLlenarSocial,
+  validate({ params: applicationIdParamsSchema, body: socialDiagnosticSchema }),
+  saveSocial,
+);
+
 // Rutas de accion y no un `PUT /:id` con `status`: aprobar cruza la frontera
+
 // entre solicitante y beneficiario, no corrige un campo del formulario. Ademas
 // asi cada transicion lleva su propio permiso y su propia validacion de cuerpo.
 applicationsRouter.post(
