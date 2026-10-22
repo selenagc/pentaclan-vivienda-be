@@ -283,13 +283,6 @@ function buildTechnicalDiff(
       after: `${input.constructionElements.length} elementos`,
     };
   }
-  if (input.photos !== undefined) {
-    changedFields.push('photos');
-    diff['photos'] = {
-      before: `${oldRecord.photos?.length ?? 0} fotos`,
-      after: `${input.photos.length} fotos`,
-    };
-  }
 
   return { changedFields, diff };
 }
@@ -614,31 +607,9 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
         }
       }
 
-      // 1:N Photos (categoría técnica)
-      if (input.photos !== undefined) {
-        await DiagnosticPhotoModel.destroy({
-          where: { diagnosticRecordId, category: 'technical' },
-          transaction: t,
-        });
-        if (input.photos.length > 0) {
-          await DiagnosticPhotoModel.bulkCreate(
-            input.photos.map((p) => ({
-              diagnosticRecordId,
-              category: 'technical',
-              photoType: p.photoType,
-              s3Key: p.s3Key || p.url || '',
-              capturedAt: p.capturedAt ? new Date(p.capturedAt) : new Date(),
-              captureLatitude: p.captureLatitude ?? null,
-              captureLongitude: p.captureLongitude ?? null,
-              mimeType: p.mimeType ?? 'image/jpeg',
-              fileSizeBytes: p.fileSizeBytes ?? 0,
-              url: p.url ?? null,
-              description: p.description ?? null,
-            })),
-            { transaction: t },
-          );
-        }
-      }
+      // Las fotografías no se guardan aquí: cada una se sube o elimina en el momento
+      // con los endpoints /diagnostic/photos. Reemplazarlas desde el formulario
+      // grababa URLs prefirmadas que vencen y borraba fotos subidas mientras tanto.
 
       const refreshed = await DiagnosticRecordModel.findByPk(diagnosticRecordId, {
         include: FULL_RECORD_INCLUDES,

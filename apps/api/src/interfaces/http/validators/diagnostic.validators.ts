@@ -85,24 +85,6 @@ export const technicalDiagnosticSchema = Joi.object({
       }),
     )
     .optional(),
-
-  photos: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        photoType: Joi.string().trim().max(100).required(),
-        s3Key: Joi.string().trim().max(500).optional(),
-        url: Joi.string().trim().max(500).optional(),
-        category: Joi.string().valid('technical', 'social').optional(),
-        capturedAt: Joi.date().iso().optional(),
-        captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null).optional(),
-        captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null).optional(),
-        mimeType: Joi.string().trim().max(50).optional(),
-        fileSizeBytes: Joi.number().integer().min(0).optional(),
-        description: Joi.string().trim().max(255).allow(null, ''),
-      }),
-    )
-    .optional(),
 });
 
 export const socialDiagnosticSchema = Joi.object({
