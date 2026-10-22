@@ -10,6 +10,7 @@ import {
   getAssignments,
   assignUsers,
   unassignUser,
+  downloadPresentation,
 } from '../controllers/ProjectsController.js';
 import {
   createProjectSchema,
@@ -30,6 +31,11 @@ const puedeEscribir = authorize('admin');
 
 projectsRouter.get('/', validate({ query: listProjectsQuerySchema }), index);
 projectsRouter.get('/:id', validate({ params: projectIdParamsSchema }), show);
+projectsRouter.get(
+  '/:id/presentation',
+  validate({ params: projectIdParamsSchema }),
+  downloadPresentation,
+);
 projectsRouter.post('/', puedeEscribir, validate({ body: createProjectSchema }), store);
 projectsRouter.put(
   '/:id',

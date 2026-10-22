@@ -402,6 +402,35 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /projects/{id}/presentation:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Projects]
+      summary: Generate and download PowerPoint presentation (.pptx) for a project
+      description: >-
+        Genera una presentacion PowerPoint (.pptx) del proyecto. La primera
+        diapositiva muestra los datos generales del proyecto y, desde la segunda
+        diapositiva, se presenta cada solicitante con sus datos en la parte
+        superior y sus fotografias (tecnicas y sociales) en cuadrícula de hasta
+        6 imagenes por diapositiva.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Archivo PowerPoint (.pptx) generado exitosamente
+          content:
+            application/vnd.openxmlformats-officedocument.presentationml.presentation:
+              schema:
+                type: string
+                format: binary
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /me/projects:
     get:
       tags: [Projects]

@@ -28,6 +28,7 @@ export interface StorageAdapter {
   ): Promise<string>;
   getPresignedReadUrl(key: string, expiresInSeconds?: number): Promise<string>;
   getSignedUrl(key: string, expiresInSeconds: number): Promise<string>;
+  getObjectBuffer(key: string): Promise<{ buffer: Buffer; contentType?: string } | null>;
   delete(key: string): Promise<void>;
   isConfigured(): boolean;
 }
@@ -107,6 +108,30 @@ export class S3StorageAdapter implements StorageAdapter {
 
   async getSignedUrl(key: string, expiresInSeconds: number = 1800): Promise<string> {
     return this.getPresignedReadUrl(key, expiresInSeconds);
+  }
+
+  async getObjectBuffer(key: string): Promise<{ buffer: Buffer; contentType?: string } | null> {
+    if (!this.isConfigured() || !key) {
+      return null;
+    }
+    try {
+      const client = this.getClient();
+      const command = new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      });
+      const response = await client.send(command);
+      if (!response.Body) {
+        return null;
+      }
+      const byteArray = await response.Body.transformToByteArray();
+      return {
+        buffer: Buffer.from(byteArray),
+        contentType: response.ContentType,
+      };
+    } catch {
+      return null;
+    }
   }
 
   async upload(input: UploadInput): Promise<UploadResult> {
