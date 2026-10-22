@@ -42,6 +42,7 @@ export interface SocialDiagnosticInput {
     answerBoolean?: boolean | null;
     score?: string | null;
   }[];
+  constructionKnowledgeObservations?: string | null;
   waterHabits?: WaterConsumptionHabit | null;
   hygiene?: HousingHygiene | null;
   health?: HealthCondition | null;

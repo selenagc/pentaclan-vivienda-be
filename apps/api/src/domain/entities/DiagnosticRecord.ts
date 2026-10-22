@@ -137,6 +137,7 @@ export interface DiagnosticRecord {
   // Modulo Social
   familyMembers: FamilyMember[];
   answers: DiagnosticAnswer[];
+  constructionKnowledgeObservations?: string | null;
   waterHabits?: WaterConsumptionHabit | null;
   hygiene?: HousingHygiene | null;
   health?: HealthCondition | null;

@@ -63,6 +63,7 @@ function toDiagnosticRecordEntity(model: DiagnosticRecordModel): DiagnosticRecor
     kitchenSuggestion: model.kitchenSuggestion,
     bathroomSuggestion: model.bathroomSuggestion,
     generalObservations: model.generalObservations,
+    constructionKnowledgeObservations: model.constructionKnowledgeObservations,
     familyMembers: (model.familyMembers ?? []).map((fm) => {
       const appStatus = (model as any).application?.status;
       const appPersonId = (model as any).application?.personId;
@@ -455,6 +456,7 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
             evaluationDate: input.evaluationDate || today,
             socialUserId: userId,
             socialCompletedAt: input.isCompleted ? new Date() : null,
+            constructionKnowledgeObservations: input.constructionKnowledgeObservations ?? null,
             requiresImprovement: false,
             requiresExpansion: false,
             requiresRenovation: false,
@@ -469,6 +471,9 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
 
         if (input.evaluationDate) updateData.evaluationDate = input.evaluationDate;
         if (input.isCompleted) updateData.socialCompletedAt = new Date();
+        if (input.constructionKnowledgeObservations !== undefined) {
+          updateData.constructionKnowledgeObservations = input.constructionKnowledgeObservations;
+        }
 
         await record.update(updateData, { transaction: t });
       }

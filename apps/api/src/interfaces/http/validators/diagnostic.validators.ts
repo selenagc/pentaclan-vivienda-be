@@ -137,6 +137,8 @@ export const socialDiagnosticSchema = Joi.object({
     )
     .optional(),
 
+  constructionKnowledgeObservations: Joi.string().trim().allow(null, ''),
+
   waterHabits: Joi.object({
     waterSource: Joi.string().trim().max(150).allow(null, ''),
     containerClean: Joi.boolean().optional(),

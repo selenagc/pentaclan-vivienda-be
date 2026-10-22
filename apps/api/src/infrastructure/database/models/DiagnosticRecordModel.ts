@@ -36,6 +36,7 @@ export class DiagnosticRecordModel extends Model<
   declare kitchenSuggestion: CreationOptional<string | null>;
   declare bathroomSuggestion: CreationOptional<string | null>;
   declare generalObservations: CreationOptional<string | null>;
+  declare constructionKnowledgeObservations: CreationOptional<string | null>;
 
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -146,6 +147,11 @@ DiagnosticRecordModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'general_observations',
+    },
+    constructionKnowledgeObservations: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'construction_knowledge_observations',
     },
     createdAt: {
       type: DataTypes.DATE,
