@@ -128,7 +128,11 @@ export const socialDiagnosticSchema = Joi.object({
       Joi.object({
         evaluationQuestionId: Joi.number().integer().positive().required(),
         answerBoolean: Joi.boolean().allow(null).optional(),
-        score: Joi.string().trim().max(10).allow(null, ''),
+        score: Joi.string()
+          .trim()
+          .valid('MUY BIEN', 'BIEN', 'REGULAR')
+          .allow(null, '')
+          .optional(),
       }),
     )
     .optional(),

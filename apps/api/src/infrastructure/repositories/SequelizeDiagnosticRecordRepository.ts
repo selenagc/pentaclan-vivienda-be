@@ -591,7 +591,7 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
               diagnosticRecordId,
               evaluationQuestionId: a.evaluationQuestionId,
               answerBoolean: a.answerBoolean ?? null,
-              score: a.score ?? null,
+              score: a.answerBoolean === true ? (a.score || null) : null,
             })),
             { transaction: t },
           );
@@ -612,10 +612,7 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
   async getEvaluationQuestions(): Promise<EvaluationQuestion[]> {
     const questions = await EvaluationQuestionModel.findAll({
       where: { active: true },
-      order: [
-        ['category', 'ASC'],
-        ['id', 'ASC'],
-      ],
+      order: [['id', 'ASC']],
     });
 
     return questions.map((q) => ({

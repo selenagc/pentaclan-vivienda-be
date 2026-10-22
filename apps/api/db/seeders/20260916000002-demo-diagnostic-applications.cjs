@@ -289,11 +289,6 @@ module.exports = {
       }
     }
 
-    // 6. Obtener preguntas de evaluación existentes
-    const [evalQuestions] = await queryInterface.sequelize.query(
-      'SELECT id_evaluation_question FROM evaluation_questions WHERE active = true ORDER BY id_evaluation_question ASC',
-    );
-
     let createdCount = 0;
 
     for (let i = 0; i < APPLICANTS_DATA.length; i++) {
@@ -452,19 +447,6 @@ module.exports = {
               updated_at: now,
             },
           ]);
-
-          // Respuestas al cuestionario
-          if (evalQuestions.length > 0) {
-            const answersToInsert = evalQuestions.map((q, idx) => ({
-              id_diagnostic_record: idDiag,
-              id_evaluation_question: q.id_evaluation_question,
-              answer_boolean: idx % 2 === 0,
-              score: String((idx + 1) * 5),
-              created_at: now,
-              updated_at: now,
-            }));
-            await queryInterface.bulkInsert('diagnostic_answers', answersToInsert);
-          }
 
           // Hábitos de agua
           await queryInterface.bulkInsert('water_consumption_habits', [
