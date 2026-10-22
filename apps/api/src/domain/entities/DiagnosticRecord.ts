@@ -21,7 +21,6 @@ export interface EvaluationQuestion {
   active: boolean;
 }
 
-
 export interface DiagnosticAnswer {
   evaluationQuestionId: number;
   question?: EvaluationQuestion;
@@ -108,9 +107,19 @@ export interface ConstructionElement {
 
 export interface DiagnosticPhoto {
   id?: number;
+  diagnosticRecordId?: string;
+  category?: 'technical' | 'social';
   photoType: string;
-  url: string;
+  s3Key: string;
+  url?: string;
+  capturedAt?: Date | string;
+  captureLatitude?: number | null;
+  captureLongitude?: number | null;
+  mimeType?: string;
+  fileSizeBytes?: number;
   description?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface DiagnosticRecord {
@@ -175,4 +184,3 @@ export interface DiagnosticChangeEntry {
   changedFields: string[];
   diff?: Record<string, DiagnosticDiffItem> | null;
 }
-

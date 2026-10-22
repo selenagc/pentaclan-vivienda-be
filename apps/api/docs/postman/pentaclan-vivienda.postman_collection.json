@@ -2736,6 +2736,290 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Diagnostic Photos (S3)",
+      "item": [
+        {
+          "name": "1. POST /applications/:id/diagnostic/photos/upload-url",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"technical\",\n  \"photoType\": \"Fachada Principal\",\n  \"mimeType\": \"image/jpeg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}/diagnostic/photos/upload-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}",
+                "diagnostic",
+                "photos",
+                "upload-url"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Retorna uploadUrl y s3Key', () => {",
+                  "  pm.expect(res.data.uploadUrl).to.be.a('string');",
+                  "  pm.expect(res.data.s3Key).to.be.a('string');",
+                  "});",
+                  "pm.environment.set('photoUploadUrl', res.data.uploadUrl);",
+                  "pm.environment.set('photoS3Key', res.data.s3Key);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. PUT {{photoUploadUrl}} (Subir a S3)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "image/jpeg"
+              }
+            ],
+            "body": {
+              "mode": "file",
+              "file": {}
+            },
+            "url": {
+              "raw": "{{photoUploadUrl}}",
+              "host": [
+                "{{photoUploadUrl}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK from S3', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. POST /applications/:id/diagnostic/photos (Confirmar subida)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"technical\",\n  \"photoType\": \"Fachada Principal\",\n  \"s3Key\": \"{{photoS3Key}}\",\n  \"capturedAt\": \"{{$isoTimestamp}}\",\n  \"captureLatitude\": -16.502345,\n  \"captureLongitude\": -68.134567,\n  \"mimeType\": \"image/jpeg\",\n  \"fileSizeBytes\": 450230,\n  \"description\": \"Foto tomada en vivo de la fachada exterior\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}/diagnostic/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}",
+                "diagnostic",
+                "photos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Retorna foto registrada con ID', () => {",
+                  "  pm.expect(res.data.id).to.be.a('number');",
+                  "  pm.expect(res.data.s3Key).to.eql(pm.environment.get('photoS3Key'));",
+                  "});",
+                  "pm.environment.set('photoId', res.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3b. POST /applications/:id/diagnostic/photos (1 Solo Paso - Multipart File)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "category",
+                  "value": "technical",
+                  "type": "text"
+                },
+                {
+                  "key": "photoType",
+                  "value": "Fachada Principal",
+                  "type": "text"
+                },
+                {
+                  "key": "capturedAt",
+                  "value": "{{$isoTimestamp}}",
+                  "type": "text"
+                },
+                {
+                  "key": "captureLatitude",
+                  "value": "-16.502345",
+                  "type": "text"
+                },
+                {
+                  "key": "captureLongitude",
+                  "value": "-68.134567",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Foto en vivo subida en 1 solo paso con multipart",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}/diagnostic/photos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}",
+                "diagnostic",
+                "photos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test('Retorna foto creada con URL prefirmada', () => {",
+                  "  pm.expect(res.data.id).to.be.a('number');",
+                  "  pm.expect(res.data.url).to.be.a('string');",
+                  "});",
+                  "pm.environment.set('photoId', res.data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. GET /applications/:id/diagnostic/photos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}/diagnostic/photos?category=technical",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}",
+                "diagnostic",
+                "photos"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "technical"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Retorna lista de fotos con URL prefirmada', () => {",
+                  "  pm.expect(res.data).to.be.an('array');",
+                  "  pm.expect(res.data.length).to.be.at.least(1);",
+                  "  pm.expect(res.data[0].url).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. DELETE /applications/:id/diagnostic/photos/:photoId",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{applicationId}}/diagnostic/photos/{{photoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{applicationId}}",
+                "diagnostic",
+                "photos",
+                "{{photoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Mensaje de exito', () => pm.expect(res.message).to.include('eliminada'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

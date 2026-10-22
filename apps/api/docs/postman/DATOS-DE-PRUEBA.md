@@ -649,3 +649,25 @@ No hay peticiones dedicadas: se prueba cambiando de sesión.
 | `400` diciendo `spouse` y `person` iguales         | Titular y cónyuge llevan el mismo documento. Los prefijos `CI-` y `CJ-` del cuerpo de ejemplo existen para evitarlo. |
 | `400` en `birthDate`                                | El formato es `YYYY-MM-DD` a secas, no una fecha ISO con hora, y no puede ser futura. |
 | No aparece la carpeta **Applications** en Postman   | Postman identifica las colecciones por `_postman_id` y no reemplaza la que ya tienes en caché. Borra la colección en el sidebar y vuelve a importarla; debe quedar con 8 carpetas. |
+
+## Fotografías Diagnósticas y AWS S3 (Nueva Carpeta)
+
+La carpeta **Diagnostic Photos (S3)** automatiza el flujo completo de captura en vivo y almacenamiento seguro:
+
+1. **`1. POST /applications/:id/diagnostic/photos/upload-url`**:
+   - Pide la URL prefirmada de subida (expiración de 5 minutos).
+   - Guarda automáticamente las variables `{{photoUploadUrl}}` y `{{photoS3Key}}` en el environment de Postman.
+2. **`2. PUT {{photoUploadUrl}} (Subir a S3)`**:
+   - Envía el archivo binario directamente a S3 sin pasar por el servidor.
+   - Requiere `Authorization: No Auth` (S3 se autentica por query params) y `Content-Type: image/jpeg`.
+3. **`3. POST /applications/:id/diagnostic/photos (Confirmar subida)`**:
+   - Registra la fotografía en PostgreSQL usando el `{{photoS3Key}}` capturado.
+   - Guarda automáticamente `{{photoId}}`.
+4. **`3b. POST /applications/:id/diagnostic/photos (1 Solo Paso - Multipart File)`**:
+   - Alternativa directa solicitada por el frontend: envía el archivo de imagen en el campo `image` (`multipart/form-data`) junto a los metadatos.
+   - El backend sube a S3 y registra en PostgreSQL en una sola petición.
+5. **`4. GET /applications/:id/diagnostic/photos`**:
+   - Lista todas las fotos con URLs prefirmadas de lectura activas para renderizar en el navegador.
+6. **`5. DELETE /applications/:id/diagnostic/photos/:photoId`**:
+   - Elimina la foto tanto de PostgreSQL como del bucket de S3.
+

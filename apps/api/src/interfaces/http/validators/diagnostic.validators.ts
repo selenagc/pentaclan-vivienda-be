@@ -85,17 +85,6 @@ export const technicalDiagnosticSchema = Joi.object({
       }),
     )
     .optional(),
-
-  photos: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        photoType: Joi.string().trim().max(100).required(),
-        url: Joi.string().trim().max(500).required(),
-        description: Joi.string().trim().max(255).allow(null, ''),
-      }),
-    )
-    .optional(),
 });
 
 export const socialDiagnosticSchema = Joi.object({
@@ -205,3 +194,62 @@ export const socialDiagnosticSchema = Joi.object({
     .allow(null)
     .optional(),
 });
+
+/** Tipos de fotografia del modulo social (seccion 5 de la ficha social). */
+const SOCIAL_PHOTO_TYPES = ['FOTOGRAFIA DEL CONJUNTO', 'FOTOGRAFIA DEL SOLICITANTE'];
+
+/** Las fotos sociales solo admiten sus dos tipos; las tecnicas, texto libre. */
+const photoTypeByCategory = Joi.string()
+  .trim()
+  .max(100)
+  .when('category', { is: 'social', then: Joi.valid(...SOCIAL_PHOTO_TYPES) })
+  .required();
+
+export const getPhotoUploadUrlSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: photoTypeByCategory,
+  mimeType: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').required(),
+});
+
+export const confirmPhotoUploadSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: photoTypeByCategory,
+  s3Key: Joi.string().trim().max(500).required(),
+  capturedAt: Joi.date().iso().required(),
+  captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null).optional(),
+  captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null).optional(),
+  mimeType: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').required(),
+  fileSizeBytes: Joi.number().integer().min(1).max(20971520).required(),
+  description: Joi.string().trim().max(255).allow(null, '').optional(),
+});
+
+export const listPhotosQuerySchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').optional(),
+});
+
+export const photoIdParamsSchema = Joi.object({
+  id: Joi.string().uuid().required(),
+  photoId: Joi.number().integer().positive().required(),
+});
+
+export const uploadPhotoMultipartSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: photoTypeByCategory,
+  capturedAt: Joi.date().iso().optional().default(() => new Date().toISOString()),
+  captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null, '').optional(),
+  captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null, '').optional(),
+  description: Joi.string().trim().max(255).allow(null, '').optional(),
+}).unknown(true);
+
+export const createPhotoSchema = Joi.object({
+  category: Joi.string().valid('technical', 'social').required(),
+  photoType: photoTypeByCategory,
+  s3Key: Joi.string().trim().max(500).optional(),
+  capturedAt: Joi.date().iso().optional().default(() => new Date().toISOString()),
+  captureLatitude: Joi.number().precision(7).min(-90).max(90).allow(null, '').optional(),
+  captureLongitude: Joi.number().precision(7).min(-180).max(180).allow(null, '').optional(),
+  mimeType: Joi.string().valid('image/jpeg', 'image/png', 'image/webp').optional(),
+  fileSizeBytes: Joi.number().integer().min(1).max(20971520).optional(),
+  description: Joi.string().trim().max(255).allow(null, '').optional(),
+}).unknown(true);
+

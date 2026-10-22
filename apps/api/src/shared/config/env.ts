@@ -26,6 +26,8 @@ export interface AppEnv {
   AWS_S3_BUCKET: string;
   AWS_ACCESS_KEY_ID: string;
   AWS_SECRET_ACCESS_KEY: string;
+  AWS_S3_ENDPOINT?: string;
+  AWS_S3_FORCE_PATH_STYLE?: boolean;
 }
 
 const schema = Joi.object<AppEnv>({
@@ -49,6 +51,8 @@ const schema = Joi.object<AppEnv>({
   AWS_S3_BUCKET: Joi.string().allow('').default(''),
   AWS_ACCESS_KEY_ID: Joi.string().allow('').default(''),
   AWS_SECRET_ACCESS_KEY: Joi.string().allow('').default(''),
+  AWS_S3_ENDPOINT: Joi.string().allow('').default(''),
+  AWS_S3_FORCE_PATH_STYLE: Joi.boolean().default(false),
 }).unknown(true);
 
 const { value, error } = schema.validate(process.env, {

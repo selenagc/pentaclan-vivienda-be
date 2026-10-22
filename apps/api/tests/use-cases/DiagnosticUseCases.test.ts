@@ -9,7 +9,10 @@ import type {
   TechnicalDiagnosticInput,
 } from '../../src/domain/repositories/DiagnosticRecordRepository.js';
 import type { Application } from '../../src/domain/entities/Application.js';
-import type { DiagnosticRecord, EvaluationQuestion } from '../../src/domain/entities/DiagnosticRecord.js';
+import type {
+  DiagnosticRecord,
+  EvaluationQuestion,
+} from '../../src/domain/entities/DiagnosticRecord.js';
 import { NotFoundError } from '../../src/shared/errors/NotFoundError.js';
 import { ConflictError } from '../../src/shared/errors/ConflictError.js';
 
@@ -119,13 +122,16 @@ describe('Diagnostic Record Use Cases', () => {
       preselect: jest.fn(),
     };
 
-
-
     mockDiagnosticRepo = {
       findByApplicationId: jest.fn(),
       saveTechnical: jest.fn(),
       saveSocial: jest.fn(),
       getEvaluationQuestions: jest.fn(),
+      addPhoto: jest.fn(),
+      findPhotosByApplicationId: jest.fn(),
+      findPhotoById: jest.fn(),
+      deletePhoto: jest.fn(),
+      getOrCreateDiagnosticRecord: jest.fn(),
     };
   });
 
@@ -168,20 +174,18 @@ describe('Diagnostic Record Use Cases', () => {
       mockApplicationRepo.findById.mockResolvedValue(null);
       const useCase = new SaveTechnicalDiagnosisUseCase(mockDiagnosticRepo, mockApplicationRepo);
 
-      await expect(
-        useCase.execute('non-existent', {}, 'user-1'),
-      ).rejects.toBeInstanceOf(NotFoundError);
+      await expect(useCase.execute('non-existent', {}, 'user-1')).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
     });
 
     it('throws ConflictError if the application is rejected', async () => {
-      mockApplicationRepo.findById.mockResolvedValue(
-        createMockApplication({ status: 'rejected' }),
-      );
+      mockApplicationRepo.findById.mockResolvedValue(createMockApplication({ status: 'rejected' }));
       const useCase = new SaveTechnicalDiagnosisUseCase(mockDiagnosticRepo, mockApplicationRepo);
 
-      await expect(
-        useCase.execute('app-uuid-1', {}, 'user-1'),
-      ).rejects.toBeInstanceOf(ConflictError);
+      await expect(useCase.execute('app-uuid-1', {}, 'user-1')).rejects.toBeInstanceOf(
+        ConflictError,
+      );
     });
 
     it('saves and returns technical diagnostic data successfully', async () => {
@@ -213,7 +217,11 @@ describe('Diagnostic Record Use Cases', () => {
       const useCase = new SaveTechnicalDiagnosisUseCase(mockDiagnosticRepo, mockApplicationRepo);
       const result = await useCase.execute('app-uuid-1', input, 'tech-user-1');
 
-      expect(mockDiagnosticRepo.saveTechnical).toHaveBeenCalledWith('app-uuid-1', input, 'tech-user-1');
+      expect(mockDiagnosticRepo.saveTechnical).toHaveBeenCalledWith(
+        'app-uuid-1',
+        input,
+        'tech-user-1',
+      );
       expect(result).toEqual(savedRecord);
     });
 
@@ -258,20 +266,18 @@ describe('Diagnostic Record Use Cases', () => {
       mockApplicationRepo.findById.mockResolvedValue(null);
       const useCase = new SaveSocialDiagnosisUseCase(mockDiagnosticRepo, mockApplicationRepo);
 
-      await expect(
-        useCase.execute('non-existent', {}, 'user-1'),
-      ).rejects.toBeInstanceOf(NotFoundError);
+      await expect(useCase.execute('non-existent', {}, 'user-1')).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
     });
 
     it('throws ConflictError if the application is rejected', async () => {
-      mockApplicationRepo.findById.mockResolvedValue(
-        createMockApplication({ status: 'rejected' }),
-      );
+      mockApplicationRepo.findById.mockResolvedValue(createMockApplication({ status: 'rejected' }));
       const useCase = new SaveSocialDiagnosisUseCase(mockDiagnosticRepo, mockApplicationRepo);
 
-      await expect(
-        useCase.execute('app-uuid-1', {}, 'user-1'),
-      ).rejects.toBeInstanceOf(ConflictError);
+      await expect(useCase.execute('app-uuid-1', {}, 'user-1')).rejects.toBeInstanceOf(
+        ConflictError,
+      );
     });
 
     it('saves and returns social diagnostic data successfully', async () => {
@@ -288,9 +294,7 @@ describe('Diagnostic Record Use Cases', () => {
             hasDisability: false,
           },
         ],
-        answers: [
-          { evaluationQuestionId: 1, answerBoolean: true, score: '5' },
-        ],
+        answers: [{ evaluationQuestionId: 1, answerBoolean: true, score: '5' }],
       };
 
       const savedRecord = createMockDiagnosticRecord({
@@ -347,7 +351,12 @@ describe('Diagnostic Record Use Cases', () => {
   describe('GetEvaluationQuestionsUseCase', () => {
     it('returns the active evaluation questions catalog', async () => {
       const mockQuestions: EvaluationQuestion[] = [
-        { id: 1, questionText: '¿Cuenta con título de propiedad?', category: 'Legal', active: true },
+        {
+          id: 1,
+          questionText: '¿Cuenta con título de propiedad?',
+          category: 'Legal',
+          active: true,
+        },
         { id: 2, questionText: '¿Habita la vivienda?', category: 'Social', active: true },
       ];
       mockDiagnosticRepo.getEvaluationQuestions.mockResolvedValue(mockQuestions);
