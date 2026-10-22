@@ -160,16 +160,47 @@ export const socialDiagnosticSchema = Joi.object({
     .optional(),
 
   hygiene: Joi.object({
-    greywaterDisposal: Joi.string().trim().max(150).allow(null, ''),
-    garbageDisposal: Joi.string().trim().max(150).allow(null, ''),
-    cleanlinessStatus: Joi.string().trim().max(150).allow(null, ''),
+    greywaterDisposal: Joi.string()
+      .trim()
+      .valid('PATIO DE CASA', 'CAMPO ABIERTO', 'RIO O ACEQUIA')
+      .allow(null, ''),
+    garbageDisposal: Joi.string()
+      .trim()
+      .valid('PATIO DE LA CASA', 'CAMPO ABIERTO', 'EN EL RIO', 'CARRO BASURERO', 'LA ENTIERRAN')
+      .allow(null, ''),
+    roomsCleanlinessStatus: Joi.string()
+      .trim()
+      .valid('LIMPIO', 'SUCIO CON BASURA', 'SUCIO CON HECES Y BASURA')
+      .allow(null, ''),
+    yardCleanlinessStatus: Joi.string()
+      .trim()
+      .valid('LIMPIO', 'SUCIO CON BASURA', 'SUCIO CON HECES Y BASURA')
+      .allow(null, ''),
   })
     .allow(null)
     .optional(),
 
   health: Joi.object({
-    prevalentDiseases: Joi.string().trim().max(150).allow(null, ''),
-    healthCareAction: Joi.string().trim().max(150).allow(null, ''),
+    prevalentDiseases: Joi.string()
+      .trim()
+      .valid(
+        'DOLOR DE BARRIGA',
+        'DIARREA O VOMITOS',
+        'PARASITOS INTESTINALES',
+        'RASCA O SARNA',
+        'ENFERMEDADES RESPIRATORIAS',
+        'ENFERMEDADES OCULARES',
+      )
+      .allow(null, ''),
+    healthCareAction: Joi.string()
+      .trim()
+      .valid(
+        'NADA HASTA QUE SE LE PASE',
+        'PREPARAN REMEDIO CASERO',
+        'ACUDEN A LA MEDICINA TRADICIONAL',
+        'LO(S) LLEVAN AL MEDICO DEL CENTRO DE SALUD',
+      )
+      .allow(null, ''),
   })
     .allow(null)
     .optional(),

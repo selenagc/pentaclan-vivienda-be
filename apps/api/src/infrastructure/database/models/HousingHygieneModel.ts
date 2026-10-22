@@ -8,7 +8,8 @@ export class HousingHygieneModel extends Model<
   declare diagnosticRecordId: string;
   declare greywaterDisposal: CreationOptional<string | null>;
   declare garbageDisposal: CreationOptional<string | null>;
-  declare cleanlinessStatus: CreationOptional<string | null>;
+  declare roomsCleanlinessStatus: CreationOptional<string | null>;
+  declare yardCleanlinessStatus: CreationOptional<string | null>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 }
@@ -30,10 +31,15 @@ HousingHygieneModel.init(
       allowNull: true,
       field: 'garbage_disposal',
     },
-    cleanlinessStatus: {
+    roomsCleanlinessStatus: {
       type: DataTypes.STRING(150),
       allowNull: true,
-      field: 'cleanliness_status',
+      field: 'rooms_cleanliness_status',
+    },
+    yardCleanlinessStatus: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+      field: 'yard_cleanliness_status',
     },
     createdAt: {
       type: DataTypes.DATE,

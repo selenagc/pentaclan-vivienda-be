@@ -448,42 +448,7 @@ module.exports = {
             },
           ]);
 
-          // Hábitos de agua
-          await queryInterface.bulkInsert('water_consumption_habits', [
-            {
-              id_diagnostic_record: idDiag,
-              water_source: 'RED PUBLICA',
-              container_clean: true,
-              container_status: 'ESTAN TAPADOS',
-              water_treatment: 'HIERVEN EL AGUA',
-              other_details: 'Tanque de polietileno de 500 litros protegido',
-              created_at: now,
-              updated_at: now,
-            },
-          ]);
-
-          // Higiene
-          await queryInterface.bulkInsert('housing_hygiene', [
-            {
-              id_diagnostic_record: idDiag,
-              greywater_disposal: 'Red de alcantarillado',
-              garbage_disposal: 'Servicio público de recojo',
-              cleanliness_status: 'Bueno',
-              created_at: now,
-              updated_at: now,
-            },
-          ]);
-
-          // Salud
-          await queryInterface.bulkInsert('health_conditions', [
-            {
-              id_diagnostic_record: idDiag,
-              prevalent_diseases: 'Infecciones respiratorias leves en temporada de invierno',
-              health_care_action: 'Centro de Salud / Hospital público',
-              created_at: now,
-              updated_at: now,
-            },
-          ]);
+          // Agua, higiene y salud se dejan sin responder: las llena el encuestador.
         }
 
         // Si tiene módulo técnico:

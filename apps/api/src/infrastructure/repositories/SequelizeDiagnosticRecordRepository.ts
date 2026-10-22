@@ -121,7 +121,8 @@ function toDiagnosticRecordEntity(model: DiagnosticRecordModel): DiagnosticRecor
       ? {
           greywaterDisposal: model.hygiene.greywaterDisposal,
           garbageDisposal: model.hygiene.garbageDisposal,
-          cleanlinessStatus: model.hygiene.cleanlinessStatus,
+          roomsCleanlinessStatus: model.hygiene.roomsCleanlinessStatus,
+          yardCleanlinessStatus: model.hygiene.yardCleanlinessStatus,
         }
       : null,
     health: model.health
@@ -518,7 +519,8 @@ export class SequelizeDiagnosticRecordRepository implements DiagnosticRecordRepo
               diagnosticRecordId,
               greywaterDisposal: input.hygiene.greywaterDisposal ?? null,
               garbageDisposal: input.hygiene.garbageDisposal ?? null,
-              cleanlinessStatus: input.hygiene.cleanlinessStatus ?? null,
+              roomsCleanlinessStatus: input.hygiene.roomsCleanlinessStatus ?? null,
+              yardCleanlinessStatus: input.hygiene.yardCleanlinessStatus ?? null,
             },
             { transaction: t },
           );
